@@ -8,6 +8,9 @@
 # * date Author's Name <author's email> version-release
 # - Summary of changes
 
+* Sun Mar 26 2018 Jérémy Farnaud <jf@almel.fr> 0.3-2
+- Fixed DB versionning problems
+
 * Sun Mar 25 2018 Jérémy Farnaud <jf@almel.fr> 0.3-1
 - First public release
 

@@ -98,23 +98,22 @@ QtObject {
     property string cfgOpenBinaryAsText: "open.binary.as.text"
     property string cfgHistoryGoBackIfSelectorExists: "history.go.back.if.selector.exists"
 
+    property var dbVersions: [ "", "0.1", "0.2", "0.3" ];
+
     Component.onCompleted: {
         _db = LocalStorage.openDatabaseSync("Gopherette", "", "Gopherette Settings", 100000);
-        if (_db.version === "") {
-            _db.changeVersion("", "0.1", function (tx) {
+
+        var dbVersions = [
+            { from: "", to: "0.1", upgrade: function (tx) {
                 tx.executeSql("create table bookmarks (id integer primary key autoincrement, name text not null, host text not null, port integer not null default 70, type text not null default '1', selector text not null default '')");
                 tx.executeSql("insert into bookmarks (name, host, port) values ('Floodgap', 'gopher.floodgap.com', 70)");
-            });
-        }
-        if (_db.version === "0.1") {
-            _db.changeVersion("0.1", "0.2", function (tx) {
+            }},
+            { from: "0.1", to: "0.2", upgrade: function (tx) {
                 tx.executeSql("create table settings (k text primary key, v text)");
                 tx.executeSql("insert into settings (k, v) values (?, ?)", [ "font.size.landscape", Theme.fontSizeSmall ]);
                 tx.executeSql("insert into settings (k, v) values (?, ?)", [ "font.size.portrait", Theme.fontSizeSmall ]);
-            });
-        }
-        if (_db.version === "0.2") {
-            _db.changeVersion("0.2", "0.3", function (tx) {
+            }},
+            { from: "0.2", to: "0.3", upgrade: function (tx) {
                 tx.executeSql("delete from settings");
                 tx.executeSql("alter table settings add ord real not null default 0");
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 1)", [ cfgPortraitReflow, "true" ]);
@@ -123,6 +122,20 @@ QtObject {
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 4)", [ cfgLandscapeRawFontSize, "19" ]);
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 5)", [ cfgOpenBinaryAsText, "false" ]);
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 6)", [ cfgHistoryGoBackIfSelectorExists, "false" ]);
+            }},
+        ]
+
+        var latestDbVersion = dbVersions[dbVersions.length - 1].to;
+        if (_db.version !== dbVersions[dbVersions.length]) {
+            var currentDbVersion = _db.version;
+            _db.changeVersion(currentDbVersion, latestDbVersion, function (tx) {
+                dbVersions.every(function (v) {
+                    if (currentDbVersion === v.from) {
+                        v.upgrade(tx);
+                        currentDbVersion = v.to;
+                    }
+                    return true;
+                });
             });
         }
 

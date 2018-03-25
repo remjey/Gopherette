@@ -8,10 +8,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Gopherette is a Free Software developped by Jérémy Farnaud and released under the GNU GPLv3 license.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Links</source>
         <translation type="unfinished"></translation>
     </message>
@@ -29,6 +25,10 @@
     </message>
     <message>
         <source>License</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Gopherette is Free Software developped by Jérémy Farnaud and released under the GNU GPLv3 license.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

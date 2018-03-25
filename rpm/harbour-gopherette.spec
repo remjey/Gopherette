@@ -14,7 +14,7 @@ Name:       harbour-gopherette
 %{?qtc_builddir:%define _builddir %qtc_builddir}
 Summary:    Gopherette
 Version:    0.3
-Release:    1
+Release:    2
 Group:      Qt/Qt
 License:    GPL-3
 URL:        http://jf.almel.fr/gopherette/
