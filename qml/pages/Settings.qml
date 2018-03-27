@@ -51,6 +51,13 @@ Dialog {
                            "history.go.back.if.selector.exists": {
                                label: "If clicked selector exists in history, act as if it was clicked in the history.",
                                type: "bool",
+                           },
+                           "raw.line.height": {
+                               label: "Line height in raw text mode",
+                               type: "slider",
+                               min: 1.0,
+                               max: 2.0,
+                               step: 0.01,
                            }
                        })
 
@@ -86,6 +93,7 @@ Dialog {
                         switch (cfm[model.k].type) {
                         case "text": sourceComponent = configTextField; break;
                         case "bool": sourceComponent = configTextSwitch; break;
+                        case "slider": sourceComponent = configSlider; break;
                         }
                     }
                 }
@@ -113,6 +121,20 @@ Dialog {
             description: cfm[parent.k].desc || ""
             checked: parent.v === "true"
             onCheckedChanged: modified[parent.k] = checked ? "true" : "false";
+        }
+    }
+
+    Component {
+        id: configSlider
+        Slider {
+            value: Math.round(parseFloat(parent.v) / cfm[parent.k].step) * cfm[parent.k].step
+            minimumValue: cfm[parent.k].min || 0.0
+            maximumValue: cfm[parent.k].max || 100.0
+            stepSize: cfm[parent.k].step || 1.0
+            width: parent.width
+            valueText: value.toFixed(2)
+            label: cfm[parent.k].label
+            onValueChanged: modified[parent.k] = value.toString();
         }
     }
 }

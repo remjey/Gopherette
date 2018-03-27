@@ -212,7 +212,7 @@ Page {
             content.text = "";
             cutebuf = "";
             rawbuf = "";
-            parserWorker.sendMessage({ action: "start", type: type, reflowedTextSize: reflowedTextSize });
+            parserWorker.sendMessage({ action: "start", type: type, reflowedTextSize: reflowedTextSize, rawTextPrefixColor: Theme.secondaryColor.toString() });
             requestEnded = false;
             searchFieldButton.enabled = false;
         }
@@ -295,13 +295,16 @@ Page {
             if (portraitReflow) {
                 content.sidePadding = Theme.horizontalPageMargin;
                 content.font.pixelSize = 16;
+                content.lineHeight = 1.0;
             } else {
                 content.sidePadding = Theme.paddingSmall;
                 content.font.pixelSize = parseInt(Model.getConfig(Model.cfgPortraitRawFontSize));
+                content.lineHeight = parseFloat(Model.getConfig(Model.cfgRawLineHeight));
             }
         } else {
             content.sidePadding = Theme.horizontalPageMargin;
             content.font.pixelSize = parseInt(Model.getConfig(Model.cfgLandscapeRawFontSize));
+            content.lineHeight = parseFloat(Model.getConfig(Model.cfgRawLineHeight));
         }
         content.text = showRawBuf ? rawbuf : cutebuf;
     }

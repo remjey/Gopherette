@@ -97,8 +97,7 @@ QtObject {
     property string cfgLandscapeRawFontSize: "landscape.raw.font.size"
     property string cfgOpenBinaryAsText: "open.binary.as.text"
     property string cfgHistoryGoBackIfSelectorExists: "history.go.back.if.selector.exists"
-
-    property var dbVersions: [ "", "0.1", "0.2", "0.3" ];
+    property string cfgRawLineHeight: "raw.line.height"
 
     Component.onCompleted: {
         _db = LocalStorage.openDatabaseSync("Gopherette", "", "Gopherette Settings", 100000);
@@ -122,6 +121,9 @@ QtObject {
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 4)", [ cfgLandscapeRawFontSize, "19" ]);
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 5)", [ cfgOpenBinaryAsText, "false" ]);
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 6)", [ cfgHistoryGoBackIfSelectorExists, "false" ]);
+            }},
+            { from: "0.3", to: "0.4", upgrade: function (tx) {
+                tx.executeSql("insert into settings (k, v, ord) values (?, ?, 7)", [ cfgRawLineHeight, "1.20" ]);
             }},
         ]
 

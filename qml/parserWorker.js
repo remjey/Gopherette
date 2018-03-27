@@ -21,6 +21,7 @@ var pageType, reflowedTextSize;
 
 var cuteBuf = "", currentCuteType, canAddNewLine;
 var rawBuf = "";
+var config = {};
 
 var M = {}
 
@@ -34,6 +35,7 @@ M.start = function (msg) {
     currentCuteType = "";
     cuteBuf = "";
     rawBuf = "<pre>";
+    config.rawTextPrefixColor = msg.rawTextPrefixColor;
 }
 
 M.end = function (msg) {
@@ -100,32 +102,33 @@ M.link = function (msg) {
     cuteBuf += nl() + prefix + ' <a href="' + msg.ilink + '">' + hesc(msg.name) + '</a>';
 
     switch (msg.type) {
-    case '0': prefix = '(FILE)'; break;
-    case '1': prefix = ' (DIR)'; break;
-    case '2': prefix = ' (CSO)'; break;
-    case '4': prefix = ' (HQX)'; break;
-    case '5': prefix = ' (BIN)'; break;
-    case '6': prefix = ' (UUE)'; break;
-    case '7': prefix = '  (?) '; break;
-    case '8': prefix = '(3270)'; break;
-    case '9': prefix = ' (BIN)'; break;
-    case '+': prefix = '(BCKP)'; break; // TODO BACKUP
+    case '0': prefix = 'FILE'; break;
+    case '1': prefix = ' DIR'; break;
+    case '2': prefix = ' CSO'; break;
+    case '4': prefix = ' HQX'; break;
+    case '5': prefix = ' BIN'; break;
+    case '6': prefix = ' UUE'; break;
+    case '7': prefix = '  ? '; break;
+    case '8': prefix = '3270'; break;
+    case '9': prefix = ' BIN'; break;
+    case '+': prefix = 'BCKP'; break; // TODO BACKUP
     case 'g':
     case 'I':
-        prefix = ' (IMG)';
+        prefix = ' IMG';
         break; // TODO IMAGE
     case 'h':
-        if (selectorIsWebURL) prefix = ' (WEB)';
-        else prefix = '(HTML)';
+        if (selectorIsWebURL) prefix = ' WEB';
+        else prefix = 'HTML';
         break;
-    case 's': prefix = ' (SND)'; break;
-    case 'T': prefix = ' (TEL)'; break;
-    default: prefix = '(UNKN)'; break;
+    case 's': prefix = ' SND'; break;
+    case 'T': prefix = ' TEL'; break;
+    default: prefix = 'UNKN'; break;
     }
-    rawBuf += prefix + ' <a href="' + msg.ilink + '">' + hesc(msg.name) + '</a><br>';
+    rawBuf += '<font color="' + config.rawTextPrefixColor + '">' + prefix + '</font>  <a href="' + msg.ilink + '">' + hesc(msg.name) + '</a><br>';
 }
 
 M.render = function () {
+    print(rawBuf);
     WorkerScript.sendMessage({ action: "render", cutebuf: cuteBuf, rawbuf: rawBuf });
     cuteBuf = "";
     rawBuf = "";
