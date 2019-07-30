@@ -128,7 +128,6 @@ M.link = function (msg) {
 }
 
 M.render = function () {
-    print(rawBuf);
     WorkerScript.sendMessage({ action: "render", cutebuf: cuteBuf, rawbuf: rawBuf });
     cuteBuf = "";
     rawBuf = "";
@@ -162,7 +161,7 @@ function cutebufType(type) {
     } else if (currentCuteType === "strong") {
         cuteBuf += "</b></font>"
         if (type !== "ascii-art") cuteBuf += "<br>";
-    } else if (currentCuteType === "text" || currentCuteType == "link" || currentCuteType == "err") {
+    } else if (currentCuteType === "text" || currentCuteType === "link" || currentCuteType === "err") {
         cuteBuf += "</font>"
         if (type !== "empty" && type !== "ascii-art") cuteBuf += "<br>";
     } else if (currentCuteType === "empty") {

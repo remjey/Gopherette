@@ -24,5 +24,21 @@ ApplicationWindow
     initialPage: Qt.resolvedUrl("pages/Bookmarks.qml")
     cover: Qt.resolvedUrl("cover/CoverPage.qml")
     allowedOrientations: Model.allowedOrientations
+
+
+    Component.onCompleted: {
+        Model.preferredReflowedFontSize =
+                Math.round(
+                    Math.min((Math.min(Screen.width, Screen.height) - Theme.horizontalPageMargin) / 36,
+                             Theme.fontSizeMedium));
+        Model.preferredPortraitFontSize =
+                Math.round(
+                    Math.min((Math.min(Screen.width, Screen.height) - Theme.horizontalPageMargin) / 49,
+                             Theme.fontSizeLarge));
+        Model.preferredLandscapeFontSize =
+                Math.round(
+                    Math.min((Math.max(Screen.width, Screen.height) - Theme.horizontalPageMargin) / 49,
+                             Theme.fontSizeLarge));
+    }
 }
 

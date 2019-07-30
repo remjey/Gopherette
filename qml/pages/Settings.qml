@@ -29,19 +29,27 @@ Dialog {
                                label: "Reflow documents when in portrait mode",
                                type: "bool",
                            },
-                           "reflow.font.smaller": {
-                               label: "Use a smaller font for reflowed documents",
+                           "reflow.font.size": {
+                               label: "Override reflowed portrait mode font size, by default " + Model.preferredReflowedFontSize,
+                               type: "text",
+                               hints: Qt.ImhDigitsOnly,
+                               default: Model.preferredReflowedFontSize,
+                           },
+                           "reflow.text.justify": {
+                               label: "Justify text for reflowed documents",
                                type: "bool",
                            },
                            "portrait.raw.font.size": {
-                               label: "Non-reflowed portrait mode font size",
+                               label: "Override non-reflowed portrait mode font size, by default " + Model.preferredPortraitFontSize,
                                type: "text",
                                hints: Qt.ImhDigitsOnly,
+                               default: Model.preferredPortraitFontSize,
                            },
                            "landscape.raw.font.size": {
-                               label: "Landscape mode font size",
+                               label: "Override landscape mode font size, by default " + Model.preferredLandscapeFontSize,
                                type: "text",
                                hints: Qt.ImhDigitsOnly,
+                               default: Model.preferredLandscapeFontSize,
                            },
                            "open.binary.as.text": {
                                label: "Open binary files as text",
@@ -86,7 +94,7 @@ Dialog {
 
                 delegate: Loader {
                     width: parent.width
-                    height: implicitHeight
+                    //height: implicitHeight
                     property string k: model.k
                     property string v: model.v
                     Component.onCompleted: {
@@ -103,13 +111,30 @@ Dialog {
 
     Component {
         id: configTextField
-        TextField {
+        Item {
             width: parent.width
-            placeholderText: label
-            label: cfm[parent.k].label || parent.k
-            text: parent.v || ""
-            inputMethodHints: cfm[parent.k].hints || (Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase)
-            onTextChanged: modified[parent.k] = text;
+            height: lbl.y + lbl.height
+
+            TextField {
+                id: tf
+                width: parent.width
+                placeholderText: cfm[parent.parent.k].default || ""
+                labelVisible: false
+                text: parent.parent.v || ""
+                inputMethodHints: cfm[parent.parent.k].hints || (Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase)
+                onTextChanged: modified[parent.parent.k] = text;
+            }
+
+            Label {
+                id: lbl
+                width: parent.width - Theme.horizontalPageMargin * 2
+                x: Theme.horizontalPageMargin
+                y: tf.height - Theme.paddingSmall
+                wrapMode: "WrapAtWordBoundaryOrAnywhere"
+                text: cfm[parent.parent.k].label || parent.parent.k
+                font.pixelSize: Theme.fontSizeSmall
+                color: tf.highlighted ? Theme.highlightColor : Theme.secondaryColor
+            }
         }
     }
 

@@ -35,7 +35,6 @@ Page {
     property string type
     property var encoding: GopherRequest.EncAuto
     property bool showRawBuf
-    property string reflowedTextSize: Model.getConfig(Model.cfgReflowFontSmaller) === "true" ? "5" : "6"
     property bool portraitReflow: Model.getConfig(Model.cfgPortraitReflow) === "true";
     property int historyIndex: 0
 
@@ -74,7 +73,7 @@ Page {
             MenuItem {
                 text: "Bookmark this page"
                 onClicked: {
-                    Model.setBookmark(false, name, host, port, type, selector);
+                    Model.setBookmark(null, name, host, port, type, selector);
                 }
             }
         }
@@ -129,6 +128,7 @@ Page {
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 color: Theme.primaryColor
                 linkColor: Theme.highlightColor
+                horizontalAlignment: Model.getConfig(Model.cfgReflowTextJustify) === "true" ? Text.AlignJustify : Text.AlignLeft
                 onLinkActivated: {
                     var dlink = links[link];
                     print(JSON.stringify(dlink));
@@ -212,7 +212,7 @@ Page {
             content.text = "";
             cutebuf = "";
             rawbuf = "";
-            parserWorker.sendMessage({ action: "start", type: type, reflowedTextSize: reflowedTextSize, rawTextPrefixColor: Theme.secondaryColor.toString() });
+            parserWorker.sendMessage({ action: "start", type: type, reflowedTextSize: "6", rawTextPrefixColor: Theme.secondaryColor.toString() });
             requestEnded = false;
             searchFieldButton.enabled = false;
         }
@@ -294,16 +294,16 @@ Page {
         if (portrait) {
             if (portraitReflow) {
                 content.sidePadding = Theme.horizontalPageMargin;
-                content.font.pixelSize = 16;
+                content.font.pixelSize = parseInt(Model.getConfig(Model.cfgReflowFontSize)) || Model.preferredReflowedFontSize;
                 content.lineHeight = 1.0;
             } else {
                 content.sidePadding = Theme.paddingSmall;
-                content.font.pixelSize = parseInt(Model.getConfig(Model.cfgPortraitRawFontSize));
+                content.font.pixelSize = parseInt(Model.getConfig(Model.cfgPortraitRawFontSize)) || Model.preferredPortraitFontSize;
                 content.lineHeight = parseFloat(Model.getConfig(Model.cfgRawLineHeight));
             }
         } else {
             content.sidePadding = Theme.horizontalPageMargin;
-            content.font.pixelSize = parseInt(Model.getConfig(Model.cfgLandscapeRawFontSize));
+            content.font.pixelSize = parseInt(Model.getConfig(Model.cfgLandscapeRawFontSize)) || Model.preferredLandscapeFontSize;
             content.lineHeight = parseFloat(Model.getConfig(Model.cfgRawLineHeight));
         }
         content.text = showRawBuf ? rawbuf : cutebuf;

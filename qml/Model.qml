@@ -26,6 +26,9 @@ QtObject {
 
     property int allowedOrientations: Orientation.All
     property var bookmarksPage
+    property int preferredReflowedFontSize: 17
+    property int preferredPortraitFontSize: 14
+    property int preferredLandscapeFontSize: 19
 
     property ListModel bookmarks: ListModel {}
     property ListModel history: ListModel {}
@@ -50,7 +53,7 @@ QtObject {
     }
 
     function setBookmark(id, name, host, port, type, selector) {
-        if (id !== false) {
+        if (id !== null) {
             _db.transaction(function (tx) {
                 tx.executeSql("update bookmarks set name = ?, host = ?, port = ?, type = ?, selector = ? where id = ?",
                               [ name, host, port, type, selector, id ]);
@@ -92,12 +95,16 @@ QtObject {
 
 
     property string cfgPortraitReflow: "portrait.reflow"
-    property string cfgReflowFontSmaller: "reflow.font.smaller"
     property string cfgPortraitRawFontSize: "portrait.raw.font.size"
     property string cfgLandscapeRawFontSize: "landscape.raw.font.size"
     property string cfgOpenBinaryAsText: "open.binary.as.text"
     property string cfgHistoryGoBackIfSelectorExists: "history.go.back.if.selector.exists"
     property string cfgRawLineHeight: "raw.line.height"
+    property string cfgReflowTextJustify: "reflow.text.justify"
+    property string cfgReflowFontSize: "reflow.font.size"
+
+    // NOT USED ANYMORE
+    property string cfgReflowFontSmaller: "reflow.font.smaller";
 
     Component.onCompleted: {
         _db = LocalStorage.openDatabaseSync("Gopherette", "", "Gopherette Settings", 100000);
@@ -124,6 +131,13 @@ QtObject {
             }},
             { from: "0.3", to: "0.4", upgrade: function (tx) {
                 tx.executeSql("insert into settings (k, v, ord) values (?, ?, 7)", [ cfgRawLineHeight, "1.20" ]);
+            }},
+            { from: "0.4", to: "0.5", upgrade: function (tx) {
+                tx.executeSql("insert into settings (k, v, ord) values (?, ?, 2.5)", [ cfgReflowTextJustify, "false" ]);
+            }},
+            { from: "0.5", to: "0.6", upgrade: function (tx) {
+                tx.executeSql("delete from settings where k = ?", [ cfgReflowFontSmaller ]);
+                tx.executeSql("insert into settings (k, v, ord) values (?, ?, 2)", [ cfgReflowFontSize, "" ]);
             }},
         ]
 

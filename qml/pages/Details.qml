@@ -32,7 +32,7 @@ Page {
     property string type
     property int historyIndex: 0
 
-    property string url: "gopher://" + host + ":" + port + "/" + type + selector;
+    property string url: "gopher://" + host + ":" + port + "/" + type + encodeURI(selector)
     property var _webURL: type == "h" && Utils.isWebURL(selector)
 
     SilicaFlickable {
@@ -157,6 +157,13 @@ Page {
                     };
                     pageStack.replace("Browser.qml", dlink);
                 }
+
+            }
+
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Copy URL to clipboard"
+                onClicked: Clipboard.text = _webURL || url;
             }
 
             Item {

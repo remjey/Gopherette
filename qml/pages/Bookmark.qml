@@ -25,12 +25,16 @@ Dialog {
     allowedOrientations: Model.allowedOrientations
 
     property var idx: null
-    property var id: false
+    property var id: null
 
     onAccepted: {
         Model.setBookmark(
                     id, tname.text.trim(), thost.text.trim(), parseInt(tport.text.trim()),
                     ttype.get(), tselector.text.trim());
+    }
+
+    canAccept: {
+        return true;
     }
 
     Component.onCompleted: {
@@ -44,6 +48,8 @@ Dialog {
             tselector.text = r.selector;
         }
     }
+
+//            grem = Clipboard.text.match(/^gopher:\/\/([\w.-]+)(:\d+)?\/(([0157hgIs])(.*))?$/i);
 
     SilicaFlickable {
         anchors.fill: parent
@@ -70,7 +76,17 @@ Dialog {
                 EnterKey.iconSource: "image://theme/icon-m-enter-next"
                 EnterKey.onClicked: thost.focus = true;
             }
-
+/*
+            ComboBox {
+                label: "Input address as "
+                width: parent.width
+                currentIndex: 0
+                menu: ContextMenu {
+                    MenuItem { text: "separate elements" }
+                    MenuItem { text: "URL" }
+                }
+            }
+*/
             TextField {
                 id: thost
                 width: parent.width
