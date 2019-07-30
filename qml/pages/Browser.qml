@@ -33,7 +33,7 @@ Page {
     property int port
     property string selector
     property string type
-    property var encoding: GopherRequest.EncAuto
+    property int encoding: GopherRequest.EncAuto
     property bool showRawBuf
     property bool portraitReflow: Model.getConfig(Model.cfgPortraitReflow) === "true";
     property int historyIndex: 0
@@ -202,6 +202,8 @@ Page {
 
             if (type == '9' && Model.getConfig(Model.cfgOpenBinaryAsText) === "true") link.type = "0";
 
+            if (type == '7' && host == page.host) link.encoding = request.responseEncoding();
+
             var ilink = links.length;
             links[ilink] = link;
 
@@ -282,7 +284,7 @@ Page {
 
     function search() {
         searchField.focus = false;
-        request.open(host, port, selector + "\t" + searchField.text.trim(), type);
+        request.open(host, port, selector + "\t" + searchField.text.trim(), type, encoding);
         requestEnded = false;
         bufUpdateTimer.start();
     }

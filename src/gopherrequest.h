@@ -28,7 +28,7 @@ class GopherRequest : public QObject
 public:
     explicit GopherRequest(QObject *parent = 0);
 
-    enum Encoding { EncAuto, EncLatin1, EncUTF8 };
+    enum Encoding { EncAuto = 0, EncLatin1 = 1, EncUTF8 = 2 };
     Q_ENUM(Encoding)
 
     Q_INVOKABLE
