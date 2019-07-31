@@ -8,6 +8,12 @@
 # * date Author's Name <author's email> version-release
 # - Summary of changes
 
+
+
+* Wed Jul 31 2019 Jérémy Farnaud <jf@almel.fr> 0.4-1
+- Better default font sizes
+- Setting to override default font sizes
+
 * Sun Mar 26 2018 Jérémy Farnaud <jf@almel.fr> 0.3-2
 - Fixed DB versionning problems
 
