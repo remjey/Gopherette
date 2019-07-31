@@ -121,9 +121,9 @@ Page {
 
             Text {
                 id: content
-                property int sidePadding
-                x: sidePadding
-                width: parent.width - sidePadding * 1.5
+                property int sidePadding: Theme.horizontalPageMargin
+                x: sidePadding * 0.75
+                width: parent.width - sidePadding
                 textFormat: Text.StyledText
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 color: Theme.primaryColor
@@ -295,16 +295,13 @@ Page {
 
         if (portrait) {
             if (portraitReflow) {
-                content.sidePadding = Theme.horizontalPageMargin;
                 content.font.pixelSize = parseInt(Model.getConfig(Model.cfgReflowFontSize)) || Model.preferredReflowedFontSize;
                 content.lineHeight = 1.0;
             } else {
-                content.sidePadding = Theme.paddingSmall;
                 content.font.pixelSize = parseInt(Model.getConfig(Model.cfgPortraitRawFontSize)) || Model.preferredPortraitFontSize;
                 content.lineHeight = parseFloat(Model.getConfig(Model.cfgRawLineHeight));
             }
         } else {
-            content.sidePadding = Theme.horizontalPageMargin;
             content.font.pixelSize = parseInt(Model.getConfig(Model.cfgLandscapeRawFontSize)) || Model.preferredLandscapeFontSize;
             content.lineHeight = parseFloat(Model.getConfig(Model.cfgRawLineHeight));
         }
