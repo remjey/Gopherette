@@ -136,6 +136,7 @@ Page {
                     case '0':
                     case '1':
                     case '7':
+                    case 'gemini':
                         if (Model.getConfig(Model.cfgHistoryGoBackIfSelectorExists) === "true") {
                             for (var i = Model.history.count - 1 - historyIndex; i < Model.history.count; ++i) {
                                 var entry = Model.history.get(i);
@@ -208,6 +209,22 @@ Page {
             links[ilink] = link;
 
             parserWorker.sendMessage({ action: "link", type: type, name: name, ilink: ilink, selector: selector });
+        }
+
+        onR_gemini_section: {
+            parserWorker.sendMessage({ action: "gemini_section", level: level, text: text });
+        }
+
+        onR_gemini_list: {
+            parserWorker.sendMessage({ action: "gemini_list", text: text });
+        }
+
+        onR_gemini_pre_start: {
+            parserWorker.sendMessage({ action: "gemini_pre_toggle", value: true, alt_text: alt_text });
+        }
+
+        onR_gemini_pre_stop: {
+            parserWorker.sendMessage({ action: "gemini_pre_toggle", value: false });
         }
 
         onR_start: {
@@ -291,10 +308,10 @@ Page {
 
     function updateContentAspect() {
         var portrait = orientation == Orientation.Portrait || orientation == Orientation.PortraitInverted;
-        showRawBuf = !portrait || !portraitReflow
+        showRawBuf = type != "gemini" && (!portrait || !portraitReflow)
 
-        if (portrait) {
-            if (portraitReflow) {
+        if (portrait || type === "gemini") {
+            if (portraitReflow || type === "gemini") {
                 content.font.pixelSize = parseInt(Model.getConfig(Model.cfgReflowFontSize)) || Model.preferredReflowedFontSize;
                 content.lineHeight = 1.0;
             } else {

@@ -28,7 +28,7 @@ CustomNetworkAccessManager::CustomNetworkAccessManager(QObject *parent)
 
 QNetworkReply *CustomNetworkAccessManager::createRequest(QNetworkAccessManager::Operation op, const QNetworkRequest &request, QIODevice *outgoingData)
 {
-    if (request.url().scheme() == "gopher") {
+    if (request.url().scheme() == "gopher" || request.url().scheme() == "gemini") {
         if (op != QNetworkAccessManager::Operation::GetOperation) return nullptr;
         GopherReply *r = new GopherReply(request, this);
         r->open(QIODevice::ReadWrite);

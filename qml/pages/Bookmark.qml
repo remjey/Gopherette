@@ -30,7 +30,8 @@ Dialog {
     onAccepted: {
         Model.setBookmark(
                     id, tname.text.trim(), thost.text.trim(), parseInt(tport.text.trim()),
-                    ttype.get(), tselector.text.trim());
+                    protocol.currentIndex === 0 ? ttype.get() : "gemini" ,
+                    tselector.text.trim());
     }
 
     canAccept: {
@@ -44,7 +45,11 @@ Dialog {
             tname.text = r.name;
             thost.text = r.host;
             tport.text = r.port;
-            ttype.set(r.type);
+            if (r.type === "gemini") {
+                protocol.currentIndex = 1;
+            } else {
+                ttype.set(r.type);
+            }
             tselector.text = r.selector;
         }
     }
@@ -76,17 +81,22 @@ Dialog {
                 EnterKey.iconSource: "image://theme/icon-m-enter-next"
                 EnterKey.onClicked: thost.focus = true;
             }
-/*
+
             ComboBox {
-                label: "Input address as "
+                id: protocol
+                label: "Protocol: "
                 width: parent.width
                 currentIndex: 0
                 menu: ContextMenu {
-                    MenuItem { text: "separate elements" }
-                    MenuItem { text: "URL" }
+                    MenuItem { text: "Gopher" }
+                    MenuItem { text: "Gemini" }
+                }
+                onCurrentIndexChanged: {
+                    if (currentIndex == 0) tport.text = "70";
+                    else if (currentIndex == 1) tport.text = "1965";
                 }
             }
-*/
+
             TextField {
                 id: thost
                 width: parent.width
@@ -113,6 +123,7 @@ Dialog {
                 width: parent.width
                 label: "Type"
                 currentIndex: 0
+                visible: protocol.currentIndex == 0
 
                 menu: ContextMenu {
                     MenuItem { text: "Menu" }
@@ -147,7 +158,7 @@ Dialog {
             TextField {
                 id: tselector
                 width: parent.width
-                placeholderText: "Selector"
+                placeholderText: "Selector / Path"
                 label: placeholderText
                 inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                 EnterKey.iconSource: "image://theme/icon-m-enter-accept"

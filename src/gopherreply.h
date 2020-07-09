@@ -20,19 +20,19 @@
 
 #include <QNetworkReply>
 #include <QObject>
-#include <QTcpSocket>
+#include <QSslSocket>
 
 class GopherReply : public QNetworkReply
 {
 public:
     GopherReply(const QNetworkRequest &request, QObject *parent);
+    ~GopherReply();
     virtual bool open(OpenMode mode);
     virtual qint64 bytesAvailable() const;
     virtual void close();
 
     virtual bool isSequential() const;
-    virtual qint64 pos() const;
-    virtual qint64 size() const;
+    virtual bool canReadLine() const;
 
 public slots:
     virtual void abort();
@@ -41,15 +41,26 @@ protected:
     virtual qint64 readData(char *data, qint64 maxSize);
     virtual qint64 writeData(const char *data, qint64 len);
 
-    QTcpSocket socket;
+    QSslSocket *socket;
     QByteArray buf;
+    bool gemini;
+    bool gemini_response_header_received;
 
 protected slots:
     void socket_connected();
     void socket_readyRead();
     void socket_error(QAbstractSocket::SocketError socketError);
     void socket_disconnected();
+    void socket_sslErrors(const QList<QSslError> &errs);
+    /*
+    void socket_modeChanged(QSslSocket::SslMode);
+    void socket_stateChanged(QAbstractSocket::SocketState);
+    void socket_aboutToClose();
+    void socket_readChannelFinished();
+    */
 
+private:
+    void fail(QNetworkReply::NetworkError err);
 };
 
 #endif // GOPHERREPLY_H

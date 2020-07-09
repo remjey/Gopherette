@@ -19,7 +19,7 @@ Qt.include("utils.js")
 
 var pageType, reflowedTextSize;
 
-var cuteBuf = "", currentCuteType, canAddNewLine;
+var cuteBuf = "", currentCuteType, canAddNewLine, geminiPreToggle;
 var rawBuf = "";
 var config = {};
 
@@ -43,13 +43,34 @@ M.end = function (msg) {
     rawBuf += "</pre>"
 }
 
-M.text = function (msg) {
-    var tt = transform(msg.line, currentCuteType);
-    cutebufType(tt.type);
-    if (tt.line.match(/^([*+-]|[0-9]+[.)-])/) && canAddNewLine) cuteBuf += "<br>" + hesc(tt.line);
-    else cuteBuf += nl() + hesc(tt.line);
+M.gemini_pre_toggle = function (msg) {
+    geminiPreToggle = msg.value;
+}
 
-    rawBuf +=  (pageType === "0" ? "" : "       ") + hesc(msg.line) + "<br>";
+M.text = function (msg) {
+    if (pageType === "gemini") {
+        if (!geminiPreToggle && msg.line.trim() === "") {
+            cutebufType("empty");
+            cuteBuf += nl();
+        } else {
+            cutebufType(geminiPreToggle ? "pre" : "text");
+            cuteBuf += nl() + hesc(msg.line, !geminiPreToggle);
+        }
+
+    } else {
+        var tt = transform(msg.line, currentCuteType);
+        cutebufType(tt.type);
+        if (tt.line.match(/^([*+-]|[0-9]+[.)-])/) && canAddNewLine) cuteBuf += "<br>" + hesc(tt.line);
+        else cuteBuf += nl() + hesc(tt.line);
+
+        rawBuf +=  (pageType === "0" ? "" : "       ") + hesc(msg.line) + "<br>";
+    }
+}
+
+M.gemini_list = function (msg) {
+    cutebufType("list")
+    cuteBuf += nl() + "• " + hesc(msg.text);
+    rawBuf += "• " + hesc(msg.text) + "<br>";
 }
 
 M.error = function (msg) {
@@ -97,6 +118,10 @@ M.link = function (msg) {
         else prefix = '🖺';
         break;
 
+    case 'gemini':
+        prefix = '→';
+        break;
+
     default: prefix = '⛔'; type = '?'; break;
     }
     cuteBuf += nl() + prefix + ' <a href="' + msg.ilink + '">' + hesc(msg.name) + '</a>';
@@ -127,25 +152,41 @@ M.link = function (msg) {
     rawBuf += '<font color="' + config.rawTextPrefixColor + '">' + prefix + '</font>  <a href="' + msg.ilink + '">' + hesc(msg.name) + '</a><br>';
 }
 
+M.gemini_section = function(msg) {
+    cutebufType("gemini_section");
+    // TODO section numbers
+    cuteBuf += '<b><font size="' + (8 - msg.level) + '">' + hesc(msg.text) + "</font></b><br>";
+    rawBuf += "<b>" + hesc(msg.text) + "</b>";
+}
+
 M.render = function () {
     WorkerScript.sendMessage({ action: "render", cutebuf: cuteBuf, rawbuf: rawBuf });
     cuteBuf = "";
     rawBuf = "";
 }
 
-function hesc(s) {
-    return s.replace(/[<>&]/g, function (c) {
+function hesc(s, nbsp) {
+    s = s.replace(/[<>&]/g, function (c) {
         switch (c) {
         case '<': return "&lt;";
         case '>': return "&gt;";
         case '&': return "&amp;";
         }
     });
+    if (nbsp)
+        s = s.replace(/  +/g, function (m) {
+            var r = " &nbsp;";
+            for (var i = 3; i < m.length; ++i)
+                r += "&nbsp;";
+            return r;
+        });
+
+    return s;
 }
 
 function nl() {
     if (canAddNewLine) {
-        if (currentCuteType === "text") return " ";
+        if (currentCuteType === "text" && pageType !== "gemini") return " ";
         return "<br>";
     } else {
         canAddNewLine = true;
@@ -156,14 +197,14 @@ function nl() {
 function cutebufType(type) {
     if (type === currentCuteType) return false;
 
-    if (currentCuteType === "ascii-art") {
+    if (currentCuteType === "ascii-art" || currentCuteType === "pre") {
         cuteBuf += '</pre></font>';
     } else if (currentCuteType === "strong") {
         cuteBuf += "</b></font>"
         if (type !== "ascii-art") cuteBuf += "<br>";
-    } else if (currentCuteType === "text" || currentCuteType === "link" || currentCuteType === "err") {
+    } else if (currentCuteType === "text" || currentCuteType === "link" || currentCuteType === "err" || currentCuteType === "list") {
         cuteBuf += "</font>"
-        if (type !== "empty" && type !== "ascii-art") cuteBuf += "<br>";
+        if (type !== "empty" && type !== "ascii-art" && type !== "pre") cuteBuf += "<br>";
     } else if (currentCuteType === "empty") {
         cuteBuf += "</font>"
     }
@@ -172,13 +213,15 @@ function cutebufType(type) {
 
     if (type === "ascii-art") {
         cuteBuf += '<font size="1"><pre>';
-    } else if (type === "text" || type === "link" || type === "err") {
+    } else if (type === "pre") {
+        cuteBuf += '<font size="' + (reflowedTextSize - 2) + '"><pre>';
+    } else if (type === "text" || type === "link" || type === "err" || type === "list") {
         cuteBuf += '<font size="' + reflowedTextSize + '">'
     } else if (type === "strong") {
         cuteBuf += '<font size="' + reflowedTextSize + '"><b>'
     } else if (type === "empty") {
         cuteBuf += '<font size="1"><br>'
-        if (currentCuteType === "text" || currentCuteType === "link" || currentCuteType === "err") cuteBuf += "<br>";
+        if (currentCuteType === "text" || currentCuteType === "link" || currentCuteType === "err" || currentCuteType === "list") cuteBuf += "<br>";
     }
 
     currentCuteType = type;

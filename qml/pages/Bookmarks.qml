@@ -114,7 +114,17 @@ Page {
                 Label {
                     width: parent.width
                     color: listItem.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
-                    text: model.host + ":" + model.port + "/" + model.type + model.selector
+                    text: {
+                        var r = model.host;
+                        if (model.type === "gemini") {
+                            if (model.port !== 1965) r += ":" + model.port;
+                            if (model.selector !== "" && model.selector[0] !== "/") r += "/";
+                        } else {
+                            if (model.port !== 70) r += ":" + model.port;
+                            r += "/" + model.type;
+                        }
+                        return r + model.selector;
+                    }
                     font.pixelSize: Theme.fontSizeSmall
                     truncationMode: TruncationMode.Fade
                     maximumLineCount: 1

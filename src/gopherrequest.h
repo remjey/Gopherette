@@ -19,20 +19,22 @@
 #define GOPHERREQUEST_H
 
 #include <QObject>
-#include <QTcpSocket>
+#include <QNetworkReply>
 
 class GopherRequest : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit GopherRequest(QObject *parent = 0);
+    explicit GopherRequest(QObject *parent = nullptr);
+    ~GopherRequest();
 
     enum Encoding { EncAuto = 0, EncLatin1 = 1, EncUTF8 = 2 };
     Q_ENUM(Encoding)
 
     Q_INVOKABLE
     void open(QString host, quint16 port, QString selector = "", QString type = "1", Encoding enc = EncAuto);
+    void open(QUrl url, Encoding enc = EncAuto);
 
     Q_INVOKABLE
     Encoding responseEncoding();
@@ -45,27 +47,37 @@ signals:
     void r_error(QString line);
     void r_end();
 
+    void r_gemini_type(QString type);
+    void r_gemini_section(int level, QString text);
+    void r_gemini_pre_start(QString alt_text);
+    void r_gemini_pre_stop();
+    void r_gemini_list(QString text);
+
 public slots:
 
 protected slots:
     void readyRead();
-    void connected();
-    void error(QAbstractSocket::SocketError socketError);
+    void error(QNetworkReply::NetworkError code);
     void disconnected();
+    void metaDataChanged();
+    void redirected(const QUrl &url);
 
 private:
-    QString host;
-    quint16 port;
-    QString selector;
     QString type;
+    QString gemini_type;
     Encoding enc;
+    QUrl url, redirection;
 
-    bool running;
-    bool ended;
-    QTcpSocket socket;
+    bool gemini_title_sent;
+    bool gemini_pre_toggle;
+
+    QNetworkReply *reply;
+
+    void fillGeminiRelative(QUrl &url_arg);
 
     void readMenu();
     void readText();
+    void readGemini();
     void close();
     QString readLine();
 };
