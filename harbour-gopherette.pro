@@ -15,9 +15,10 @@ TARGET = harbour-gopherette
 CONFIG += sailfishapp
 
 SOURCES += src/harbour-gopherette.cpp \
-    src/gopherrequest.cpp \
-    src/gopherreply.cpp \
-    src/customnetworkaccessmanager.cpp
+    src/customreply.cpp \
+    src/customnetworkaccessmanager.cpp \
+    src/geminicachedrequestdata.cpp \
+    src/requester.cpp
 
 OTHER_FILES += qml/harbour-gopherette.qml \
     qml/cover/CoverPage.qml \
@@ -39,12 +40,14 @@ CONFIG += sailfishapp_i18n
 TRANSLATIONS += translations/harbour-gopherette-de.ts
 
 HEADERS += \
-    src/gopherrequest.h \
+    src/customreply.h \
+    src/geminicachedrequestdata.h \
     src/harbour-gopherette.h \
-    src/gopherreply.h \
-    src/customnetworkaccessmanager.h
+    src/customnetworkaccessmanager.h \
+    src/requester.h
 
 DISTFILES += \
+    qml/components/ImageDisplay.qml \
     qml/pages/Browser.qml \
     qml/pages/Bookmarks.qml \
     qml/pages/Bookmark.qml \

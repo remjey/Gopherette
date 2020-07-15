@@ -18,7 +18,7 @@
 #include "harbour-gopherette.h"
 
 #include "customnetworkaccessmanager.h"
-#include "gopherrequest.h"
+#include "requester.h"
 
 #include <QtQuick>
 
@@ -26,27 +26,28 @@
 
 QNetworkAccessManager *nam;
 
-namespace {
-    QNetworkProxy proxy;
-}
+static QNetworkProxy proxy;
 
 class CustomNetworkAccessManagerFactory : public QQmlNetworkAccessManagerFactory
 {
 public:
-    virtual QNetworkAccessManager *create(QObject *parent = nullptr) {
-        CustomNetworkAccessManager *r = new CustomNetworkAccessManager(parent);
-        r->setProxy(proxy);
-        return r;
-    }
+    ~CustomNetworkAccessManagerFactory() {}
 
+    QNetworkAccessManager *create(QObject *parent = nullptr);
 };
 
-namespace {
-    CustomNetworkAccessManagerFactory *namf;
+QNetworkAccessManager *CustomNetworkAccessManagerFactory::create(QObject *parent)
+{
+    CustomNetworkAccessManager *r = new CustomNetworkAccessManager(parent);
+    r->setProxy(proxy);
+    return r;
 }
 
-int main(int argc, char *argv[]) {
-    qmlRegisterType<GopherRequest>("fr.almel.gopher", 1, 0, "GopherRequest");
+static CustomNetworkAccessManagerFactory *cnamf;
+
+int main(int argc, char *argv[])
+{
+    qmlRegisterType<Requester>("fr.almel.gopher", 1, 0, "Requester");
 
     QScopedPointer<QGuiApplication> app(SailfishApp::application(argc, argv));
     QScopedPointer<QQuickView> view(SailfishApp::createView());
@@ -54,9 +55,9 @@ int main(int argc, char *argv[]) {
     QNetworkAccessManager *onam = view->engine()->networkAccessManager();
     proxy = onam->proxy();
 
-    namf = new CustomNetworkAccessManagerFactory();
-    nam = namf->create();
-    view->engine()->setNetworkAccessManagerFactory(namf);
+    cnamf = new CustomNetworkAccessManagerFactory();
+    nam = cnamf->create();
+    view->engine()->setNetworkAccessManagerFactory(cnamf);
 
     view->setSource(SailfishApp::pathTo("qml/harbour-gopherette.qml"));
     view->show();

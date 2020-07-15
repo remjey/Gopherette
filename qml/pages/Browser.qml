@@ -21,6 +21,7 @@ import Sailfish.Silica 1.0
 import fr.almel.gopher 1.0
 
 import "../utils.js" as Utils
+import "../components"
 import ".."
 
 Page {
@@ -32,11 +33,13 @@ Page {
     property string host
     property int port
     property string selector
+    property string query
     property string type
-    property int encoding: GopherRequest.EncAuto
+    property int encoding: Requester.EncAuto
     property bool showRawBuf
     property bool portraitReflow: Model.getConfig(Model.cfgPortraitReflow) === "true";
     property int historyIndex: 0
+    property bool unloaded: false
 
     SilicaFlickable {
         id: pageflick
@@ -89,8 +92,18 @@ Page {
             Item {
                 id: searchFieldItem
                 width: parent.width
-                height: searchField.implicitHeight + Theme.paddingLarge
-                visible: type == '7'
+                height: searchFieldInfo.implicitHeight + searchField.implicitHeight + Theme.paddingLarge
+                visible: false
+
+                Text {
+                    id: searchFieldInfo
+                    anchors.top: parent.top
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - Theme.horizontalPageMargin * 2
+                    color: Theme.highlightColor
+                    font.pixelSize: Theme.fontSizeMedium
+                    wrapMode: Text.Wrap
+                }
 
                 IconButton {
                     id: searchFieldButton
@@ -106,7 +119,7 @@ Page {
 
                 TextField {
                     id: searchField
-                    anchors.top: parent.top
+                    anchors.top: searchFieldInfo.bottom
                     anchors.left: parent.left
                     anchors.right: searchFieldButton.left
                     enabled: requestEnded;
@@ -137,19 +150,24 @@ Page {
                     case '1':
                     case '7':
                     case 'gemini':
+                        var wentBack = false;
                         if (Model.getConfig(Model.cfgHistoryGoBackIfSelectorExists) === "true") {
                             for (var i = Model.history.count - 1 - historyIndex; i < Model.history.count; ++i) {
                                 var entry = Model.history.get(i);
                                 if (entry.host === dlink.host && entry.port === dlink.port
-                                        && Utils.removeTrailingSlash(entry.selector) === Utils.removeTrailingSlash(dlink.selector))
+                                        && Utils.removeTrailingSlash(entry.selector) === Utils.removeTrailingSlash(dlink.selector)
+                                        && entry.query === entry.query)
                                 {
                                     pageStack.pop(Model.historyPages[Model.history.count - 1 - i]);
+                                    wentBack = true;
                                     break;
                                 }
                             }
                         }
-                        dlink.encoding = request.responseEncoding();
-                        pageStack.push("Browser.qml", dlink);
+                        if (!wentBack) {
+                            dlink.encoding = requester.responseEncoding();
+                            pageStack.push("Browser.qml", dlink);
+                        }
                         break;
                     default:
                         pageStack.push("Details.qml", dlink);
@@ -158,13 +176,23 @@ Page {
                 }
             }
 
-            Item { width: 1; height: Theme.paddingLarge }
+            Item {
+                width: 1;
+                height: Theme.paddingLarge
+                visible: !contentImage.loaded
+            }
+
+            ImageDisplay {
+                id: contentImage
+                visible: false
+            }
 
             BusyIndicator {
                 id: busyIndicator
                 anchors.horizontalCenter: parent.horizontalCenter
                 size: BusyIndicatorSize.Medium;
                 running: !requestEnded;
+                visible: running
             }
         }
     }
@@ -174,8 +202,16 @@ Page {
     property string cutebuf: ""
     property string rawbuf: ""
 
-    GopherRequest {
-        id: request
+    Requester {
+        id: requester
+
+        onR_gemini_header: {
+            searchFieldItem.visible = (status == Requester.GeminiInput || status == Requester.GeminiInputSensitive);
+            searchField.echoMode = (status == Requester.GeminiInputSensitive ? TextInput.Password : TextInput.Normal);
+            searchField.placeholderText = "";
+            searchFieldInfo.visible = true;
+            searchFieldInfo.text = meta;
+        }
 
         onR_title: {
             page.name = title;
@@ -197,13 +233,14 @@ Page {
                 host: host,
                 port: port,
                 selector: selector,
+                query: query,
                 name: name,
                 historyIndex: historyIndex + 1,
             };
 
             if (type == '9' && Model.getConfig(Model.cfgOpenBinaryAsText) === "true") link.type = "0";
 
-            if (type == '7' && host == page.host) link.encoding = request.responseEncoding();
+            if (type == '7' && host == page.host) link.encoding = requester.responseEncoding();
 
             var ilink = links.length;
             links[ilink] = link;
@@ -245,27 +282,35 @@ Page {
                 parserWorker.sendMessage({ action: "render" });
             }
         }
+
+        onR_gemini_data_link: {
+            if (content_type.substring(0, 6) == "image/") {
+                content.visible = false;
+                busyIndicator.visible = false;
+                contentImage.visible = true;
+                contentImage.load(url);
+            }
+        }
     }
 
     Component.onCompleted: {
         updateContentAspect();
-        var entry = { title: name, type: type, host: host, port: port, selector: selector };
+        var entry = { title: name, type: type, host: host, port: port, selector: selector, query: query };
+
         if (historyIndex > Model.history.count) {
             // This is not supposed to happen, but just in case.
             historyIndex = Model.history.count;
         }
+
         if (historyIndex == Model.history.count) {
             Model.history.insert(0, entry)
         } else {
             Model.history.set(Model.history.count - 1 - historyIndex, entry);
         }
+
         Model.historyPages[historyIndex] = page;
-        if (type != '7') {
-            requestEnded = false;
-            request.open(host, port, selector, type, encoding);
-        } else {
-            searchField.focus = true;
-        }
+
+        load();
     }
 
     Component.onDestruction: {
@@ -281,8 +326,27 @@ Page {
     Connections {
         target: pageStack
         onBusyChanged: {
-            if (!pageStack.busy && pageStack.currentPage === page) {
-                bufUpdateTimer.start();
+            if (!pageStack.busy) {
+                if (pageStack.currentPage === page) {
+                    if (unloaded) {
+                        load();
+                    } else {
+                        bufUpdateTimer.start();
+                    }
+                }
+            } else {
+                console.log("I’m page", historyIndex, ", unloaded(", unloaded, "), I see depth ", pageStack.depth)
+                if (unloaded && historyIndex == pageStack.depth - 3) {
+                    load();
+                } else if (!unloaded && historyIndex === pageStack.depth - 12) {
+                    // TODO using pageStack.depth isn’t optimal
+                    unloaded = true;
+                    content.text = "";
+                    cutebuf = "";
+                    rawbuf = "";
+                    contentImage.unload();
+                    console.log("Unloading", historyIndex)
+                }
             }
         }
     }
@@ -301,7 +365,8 @@ Page {
 
     function search() {
         searchField.focus = false;
-        request.open(host, port, selector + "\t" + searchField.text.trim(), type, encoding);
+        query = searchField.text.trim();
+        requester.open(host, port, selector, query, type, encoding);
         requestEnded = false;
         bufUpdateTimer.start();
     }
@@ -323,6 +388,17 @@ Page {
             content.lineHeight = parseFloat(Model.getConfig(Model.cfgRawLineHeight));
         }
         content.text = showRawBuf ? rawbuf : cutebuf;
+    }
+
+    function load() {
+        unloaded = false;
+        if (type != '7') {
+            requestEnded = false;
+            requester.open(host, port, selector, query, type, encoding);
+        } else {
+            searchFieldItem.visible = true;
+            searchField.focus = true;
+        }
     }
 
     WorkerScript {

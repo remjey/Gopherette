@@ -22,29 +22,31 @@
 #include <QObject>
 #include <QSslSocket>
 
-class GopherReply : public QNetworkReply
+class CustomReply : public QNetworkReply
 {
 public:
-    GopherReply(const QNetworkRequest &request, QObject *parent);
-    ~GopherReply();
-    virtual bool open(OpenMode mode);
-    virtual qint64 bytesAvailable() const;
-    virtual void close();
+    CustomReply(const QNetworkRequest &request, QObject *parent);
+    ~CustomReply() override;
 
-    virtual bool isSequential() const;
-    virtual bool canReadLine() const;
+    bool open(OpenMode mode) override;
+    qint64 bytesAvailable() const override;
+    void close() override;
+
+    bool isSequential() const override;
+    bool canReadLine() const override;
 
 public slots:
-    virtual void abort();
+    void abort() override;
 
 protected:
-    virtual qint64 readData(char *data, qint64 maxSize);
-    virtual qint64 writeData(const char *data, qint64 len);
+    qint64 readData(char *data, qint64 maxSize) override;
+    qint64 writeData(const char *data, qint64 len) override;
 
     QSslSocket *socket;
     QByteArray buf;
     bool gemini;
     bool gemini_response_header_received;
+    bool gemini_finished;
 
 protected slots:
     void socket_connected();

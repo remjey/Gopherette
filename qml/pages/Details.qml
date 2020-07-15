@@ -19,6 +19,7 @@ import QtQuick 2.0
 import Sailfish.Silica 1.0
 
 import "../utils.js" as Utils
+import "../components"
 import ".."
 
 Page {
@@ -182,48 +183,18 @@ Page {
                 horizontalAlignment: Text.AlignHCenter
             }
 
-            MouseArea {
-                width: parent.width
-                height: Math.max(imageBusy.height, pic.height)
-
-                BusyIndicator {
-                    id: imageBusy
-                    size: BusyIndicatorSize.Medium
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                onWidthChanged: pic.updateSize()
-
-                Image {
-                    id: pic
-                    visible: false
-                    opacity: 0
-                    Behavior on opacity {
-                        NumberAnimation { duration: 250 }
-                    }
-
-                    onStatusChanged: updateSize();
-
-                    function updateSize() {
-                        if (status == Image.Ready) {
-                            width = parent.width;
-                            height = implicitHeight * width / implicitWidth;
-                            imageBusy.running = false;
-                            opacity = 1;
-                        } else if (status == Image.Error) {
-                            imageBusy.running = false;
-                        }
-                    }
-                }
+            ImageDisplay {
+                id: imageDisplay
+                visible: false
             }
+
         }
     }
 
     Component.onCompleted: {
         if (type == "I" || type == "g") {
-            imageBusy.running = true;
-            pic.visible = true;
-            pic.source = url;
+            imageDisplay.visible = true;
+            imageDisplay.load(url);
         }
     }
 

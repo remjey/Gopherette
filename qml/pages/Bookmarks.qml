@@ -69,7 +69,7 @@ Page {
                                    name: model.name,
                                    host: model.host,
                                    port: model.port,
-                                   encoding: GopherRequest.EncAuto,
+                                   encoding: Requester.EncAuto,
                                    type: model.type,
                                    selector: model.selector,
                                    historyIndex: 0,

@@ -16,7 +16,8 @@
  */
 
 #include "customnetworkaccessmanager.h"
-#include "gopherreply.h"
+#include "geminicachedrequestdata.h"
+#include "customreply.h"
 
 #include <QNetworkRequest>
 
@@ -30,8 +31,14 @@ QNetworkReply *CustomNetworkAccessManager::createRequest(QNetworkAccessManager::
 {
     if (request.url().scheme() == "gopher" || request.url().scheme() == "gemini") {
         if (op != QNetworkAccessManager::Operation::GetOperation) return nullptr;
-        GopherReply *r = new GopherReply(request, this);
+        CustomReply *r = new CustomReply(request, this);
         r->open(QIODevice::ReadWrite);
+        return r;
+
+    } else if (request.url().scheme() == "geminicache") {
+        if (op != QNetworkAccessManager::Operation::GetOperation) return nullptr;
+        GeminiCachedRequestData *r = new GeminiCachedRequestData(request, this);
+        r->open(QIODevice::ReadOnly);
         return r;
 
     } else {
@@ -43,5 +50,7 @@ QStringList CustomNetworkAccessManager::supportedSchemesImplementation() const
 {
     QStringList r = QNetworkAccessManager::supportedSchemesImplementation();
     r.append("gopher");
+    r.append("gemini");
+    r.append("geminicache");
     return r;
 }

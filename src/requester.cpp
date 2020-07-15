@@ -15,8 +15,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "gopherrequest.h"
+#include "requester.h"
 #include "harbour-gopherette.h"
+#include "geminicachedrequestdata.h"
 
 #include <QtDebug>
 #include <QUrl>
@@ -24,7 +25,8 @@
 #include <QRegExp>
 #include <QRegularExpression>
 
-GopherRequest::Encoding encodingOf(const QByteArray& ba) {
+Requester::Encoding encodingOf(const QByteArray& ba)
+{
     bool has_utf8 = false;
     int utf8_rem = 0;
     for (char c : ba) {
@@ -43,7 +45,7 @@ GopherRequest::Encoding encodingOf(const QByteArray& ba) {
         } else if ((c & 0xc0) == 0x80) {
             // 0x10xxxxxx
             if (utf8_rem == 0) {
-                return GopherRequest::EncLatin1;
+                return Requester::EncLatin1;
             } else {
                 --utf8_rem;
             }
@@ -51,50 +53,65 @@ GopherRequest::Encoding encodingOf(const QByteArray& ba) {
             // 0x0xxxxxxx (ASCII)
             if (utf8_rem > 0) {
                 // This is invalid UTF8, switch to Latin1
-                return GopherRequest::EncLatin1;
+                return Requester::EncLatin1;
             } else {
                 // Not sure
             }
         } else {
             // Not ASCIII, not correct UTF8
             // (supposedly 0x11111xxx and invalid UTF8
-            return GopherRequest::EncLatin1;
+            return Requester::EncLatin1;
         }
     }
     if (has_utf8) {
-        if (utf8_rem == 0) return GopherRequest::EncUTF8;
-        else return GopherRequest::EncLatin1; // Invalid UTF8
+        if (utf8_rem == 0) return Requester::EncUTF8;
+        else return Requester::EncLatin1; // Invalid UTF8
     }
     // Only ASCII text was encountered
-    return GopherRequest::EncAuto;
+    return Requester::EncAuto;
 }
 
-GopherRequest::GopherRequest(QObject *parent) : QObject(parent), reply(nullptr)
+Requester::Requester(QObject *parent) : QObject(parent), reply(nullptr)
 {
     /*
-    connect(&socket, &QIODevice::readyRead, this, &GopherRequest::readyRead);
-    connect(&socket, &QAbstractSocket::connected, this, &GopherRequest::connected);
-    connect(&socket, static_cast<void(QAbstractSocket::*)(QAbstractSocket::SocketError)>(&QAbstractSocket::error), this, &GopherRequest::error);
-    connect(&socket, &QAbstractSocket::disconnected, this, &GopherRequest::disconnected);
+    connect(&socket, &QIODevice::readyRead, this, &Requester::readyRead);
+    connect(&socket, &QAbstractSocket::connected, this, &Requester::connected);
+    connect(&socket, static_cast<void(QAbstractSocket::*)(QAbstractSocket::SocketError)>(&QAbstractSocket::error), this, &Requester::error);
+    connect(&socket, &QAbstractSocket::disconnected, this, &Requester::disconnected);
     */
 }
 
-GopherRequest::~GopherRequest()
+Requester::~Requester()
 {
     if (reply) reply->deleteLater();
 }
 
-void GopherRequest::open(QString host, quint16 port, QString selector, QString type, Encoding enc)
+void Requester::open(QString host, quint16 port, QString selector, QString query, QString type, Encoding enc)
 {
+    QUrl url_dst;
+
     if (type == "gemini") {
         if (selector.length() == 0 || selector.at(0) != '/') selector.insert(0, '/');
-        open(QUrl("gemini://" + host + ":" + QString::number(port) + selector));
+
+        url_dst.setScheme("gemini");
+        url_dst.setHost(host);
+        if (port) url_dst.setPort(port);
+        url_dst.setPath(selector);
+        if (!query.isEmpty()) url_dst.setQuery(query, QUrl::DecodedMode);
+
     } else {
-        open(QUrl("gopher://" + host + ":" + QString::number(port) + "/" + type + selector), enc);
+        url_dst.setScheme("gopher");
+        url_dst.setHost(host);
+        if (port) url_dst.setPort(port);
+        url_dst.setPath("/" + type + selector);
+        if (!query.isEmpty()) url_dst.setQuery(query, QUrl::DecodedMode);
+
     }
+
+    open(url_dst, enc);
 }
 
-void GopherRequest::open(QUrl url_arg, Encoding enc)
+void Requester::open(QUrl url_arg, Encoding enc)
 {
     if (reply) return;
 
@@ -118,18 +135,18 @@ void GopherRequest::open(QUrl url_arg, Encoding enc)
     redirection.clear();
     reply = nam->get(QNetworkRequest(url));
 
-    connect(reply, &QIODevice::readyRead, this, &GopherRequest::readyRead);
-    connect(reply, &QNetworkReply::finished, this, &GopherRequest::disconnected);
+    connect(reply, &QIODevice::readyRead, this, &Requester::readyRead);
+    connect(reply, &QNetworkReply::finished, this, &Requester::disconnected);
     connect(reply, static_cast<void (QNetworkReply::*)(QNetworkReply::NetworkError)>(&QNetworkReply::error),
-            this, &GopherRequest::error);
-    connect(reply, &QNetworkReply::metaDataChanged, this, &GopherRequest::metaDataChanged);
-    connect(reply, &QNetworkReply::redirected, this, &GopherRequest::redirected);
+            this, &Requester::error);
+    connect(reply, &QNetworkReply::metaDataChanged, this, &Requester::metaDataChanged);
+    connect(reply, &QNetworkReply::redirected, this, &Requester::redirected);
 
-    r_start();
-    qInfo() << "Gopher request: " << url;
+    r_start(url.scheme());
+    qInfo() << "Gopher/Gemini request: " << url;
 }
 
-void GopherRequest::error(QNetworkReply::NetworkError code)
+void Requester::error(QNetworkReply::NetworkError code)
 {
     auto err_str = QMetaEnum::fromType<QNetworkReply::NetworkError>().valueToKey(code);
     if (err_str == nullptr) err_str = "unnknown error";
@@ -138,26 +155,84 @@ void GopherRequest::error(QNetworkReply::NetworkError code)
 
     r_error(QString("Socket Error: ") + err_str
             + " (" + QString::number(code) + ")");
-    r_text("This error occured on the client side.");
+    r_text("This error message was generated on the client side.");
     r_end();
 }
 
-void GopherRequest::metaDataChanged() {
-    // TODO gemini type
-    qInfo("Gemini status: %s", reply->rawHeader("x-gemini-status").data());
-    qInfo("Gemini meta: %s", + reply->rawHeader("x-gemini-meta").data());
+void Requester::metaDataChanged()
+{
+    if (type != "gemini") return;
+
     QString meta = reply->rawHeader("x-gemini-meta");
-    if (meta.length() == 0) meta = "text/gemini; charset=utf-8";
-    r_gemini_type(meta);
+
+    int status_value = reply->rawHeader("x-gemini-status").toInt();
+    auto statusMetaEnum = QMetaEnum::fromType<GeminiStatus>();
+    const char *status_name = statusMetaEnum.valueToKey(status_value);
+    if (!status_name) {
+        status_value = 10 * (status_value / 10);
+        status_name = statusMetaEnum.valueToKey(status_value);
+    }
+    if (!status_name) {
+        status_value = GeminiInvalidStatus;
+        status_name = statusMetaEnum.valueToKey(status_value);
+    }
+
+    qInfo("Gemini status: %s, translated to %d (%s)", reply->rawHeader("x-gemini-status").data(), status_value, status_name);
+    qInfo() << "Gemini meta: " << meta;
+
+    if (status_value / 10 == 2) {
+        QStringList items = meta.split(';', QString::SkipEmptyParts);
+        gemini_content_type = items.at(0).trimmed();
+        if (gemini_content_type.startsWith("text/")) {
+            if (gemini_content_type == "text/gemini") {
+                gemini_parse_level = GeminiTextRich;
+            } else {
+                gemini_parse_level = GeminiTextPlain;
+            }
+        } else {
+            gemini_parse_level = GeminiNonText;
+            if (!gemini_content_type.startsWith("image/")) {
+                r_error("Unsupported file-type: " + gemini_content_type);
+                reply->abort();
+            }
+        }
+
+        for (int i = 1; i < items.length(); ++i) {
+            QString param = items.at(i).trimmed();
+            int pos = param.indexOf('=');
+            QString property, value;
+            if (pos == -1) {
+                property = param.toLower();
+            } else {
+                property = param.mid(0, pos);
+                value = param.mid(pos + 1);
+            }
+
+            if (property == "charset") {
+                value = value.toLower();
+                if (value == "utf8" || value == "utf-8")
+                    gemini_charset = "utf-8";
+                else
+                    gemini_charset = "latin1";
+            }
+        }
+    }
+
+    r_gemini_header(static_cast<GeminiStatus>(status_value), meta);
+
+    if (gemini_parse_level == GeminiTextPlain) {
+        gemini_pre_toggle = true;
+        r_gemini_pre_start("");
+    }
 }
 
-void GopherRequest::redirected(const QUrl &r)
+void Requester::redirected(const QUrl &r)
 {
     redirection = r;
     fillGeminiRelative(redirection);
 }
 
-void GopherRequest::fillGeminiRelative(QUrl &url_arg)
+void Requester::fillGeminiRelative(QUrl &url_arg)
 {
     if (url_arg.scheme().isEmpty()) {
         if (!url_arg.path().isEmpty() && !url_arg.path().startsWith("/")) {
@@ -176,8 +251,8 @@ void GopherRequest::fillGeminiRelative(QUrl &url_arg)
     }
 }
 
-void GopherRequest::disconnected() {
-    // TODO process remaning bytes ?
+void Requester::disconnected()
+{
     qInfo() << "Disconnected, bytes remaining " << (reply ? reply->bytesAvailable() : 0);
     readyRead();
     r_end();
@@ -187,24 +262,34 @@ void GopherRequest::disconnected() {
     if (!redirection.isEmpty()) {
         qInfo() << "Redirected to: " << redirection;
         open(redirection, enc);
+    } else if (gemini_parse_level == GeminiNonText) {
+        quint64 id = GeminiCachedRequestData::steal(gemini_nontext_buffer);
+        r_gemini_data_link("geminicache:///" + QString::number(id), gemini_content_type);
     }
 }
 
-void GopherRequest::readyRead()
+void Requester::readyRead()
 {
-    qInfo() << "Ready to read";
-    if (type == "1" || type == "7") readMenu();
-    else if (type == "gemini") readGemini();
-    else readText();
+    if (type == "1" || type == "7") {
+        readMenu();
+    } else if (type == "gemini") {
+        if (gemini_parse_level == GeminiNonText)
+            readGeminiNonText();
+        else
+            readGemini();
+    } else {
+        readText();
+    }
 }
 
 static QRegularExpression gemini_link_match("^=>\\s*(\\S+)(\\s+(.*))?");
 
-void GopherRequest::readGemini() {
+void Requester::readGemini()
+{
     while (reply->canReadLine()) {
         QString line = readLine();
         if (gemini_pre_toggle) {
-            if (line.startsWith("```")) {
+            if (line.startsWith("```") && gemini_parse_level == GeminiTextRich) {
                 gemini_pre_toggle = false;
                 r_gemini_pre_stop();
             } else {
@@ -250,13 +335,13 @@ void GopherRequest::readGemini() {
             fillGeminiRelative(link_url);
 
             if (link_url.scheme() == "gemini") {
-                r_link("gemini", text, link_url.host(), link_url.port(1965), link_url.path() + (link_url.hasQuery() ? "?" + link_url.query() : ""));
+                r_link("gemini", text, link_url.host(), static_cast<uint16_t>(link_url.port(1965)), link_url.path(), link_url.query(QUrl::FullyDecoded));
             } else if (link_url.scheme() == "gopher") {
                 QString type = "1";
                 if (link_url.path().length() >= 2) type = link_url.path().mid(1, 1);
-                r_link(type, text, link_url.host(), link_url.port(70), link_url.path().mid(2));
+                r_link(type, text, link_url.host(), static_cast<uint16_t>(link_url.port(70)), link_url.path().mid(2), "");
             } else {
-                r_link("h", text, "", 0, "URL:" + link_url.toString());
+                r_link("h", text, "", 0, "URL:" + link_url.toString(), "");
             }
         } else {
             r_text(line);
@@ -264,13 +349,17 @@ void GopherRequest::readGemini() {
     }
 }
 
-void GopherRequest::readText() {
+void Requester::readGeminiNonText() {
+    gemini_nontext_buffer.append(reply->readAll());
+}
+
+void Requester::readText() {
     while (reply->canReadLine()) {
         r_text(readLine());
     }
 }
 
-void GopherRequest::readMenu() {
+void Requester::readMenu() {
     while (reply->canReadLine()) {
         QString line = readLine();
         if (line.length() < 2) continue;
@@ -304,7 +393,7 @@ void GopherRequest::readMenu() {
         case 's':
         case 'h':
             if (fields.size() < 4) break;
-            r_link(QString(type), fields.at(0), fields.at(2), fields.at(3).toInt(), fields.at(1));
+            r_link(QString(type), fields.at(0), fields.at(2), static_cast<uint16_t>(fields.at(3).toInt()), fields.at(1), "");
             break;
         default:
             break;
@@ -312,11 +401,11 @@ void GopherRequest::readMenu() {
     }
 }
 
-GopherRequest::Encoding GopherRequest::responseEncoding() {
+Requester::Encoding Requester::responseEncoding() {
     return enc;
 }
 
-QString GopherRequest::readLine() {
+QString Requester::readLine() {
     QString r;
     QByteArray ba = reply->readLine();
     if (enc == EncAuto) enc = encodingOf(ba);

@@ -15,24 +15,26 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "gopherreply.h"
+#include "customreply.h"
 
 #include <QMetaEnum>
 
-GopherReply::GopherReply(const QNetworkRequest &request, QObject *parent)
+CustomReply::CustomReply(const QNetworkRequest &request, QObject *parent)
     : QNetworkReply(parent),
-      gemini(request.url().scheme() == "gemini"), gemini_response_header_received(false)
+      gemini(request.url().scheme() == "gemini"),
+      gemini_response_header_received(false),
+      gemini_finished(false)
 {
     setRequest(request);
     socket = new QSslSocket(this);
-    connect(socket, &QIODevice::readyRead, this, &GopherReply::socket_readyRead);
+    connect(socket, &QIODevice::readyRead, this, &CustomReply::socket_readyRead);
     if (gemini)
-        connect(socket, &QSslSocket::encrypted, this, &GopherReply::socket_connected);
+        connect(socket, &QSslSocket::encrypted, this, &CustomReply::socket_connected);
     else
-        connect(socket, &QSslSocket::connected, this, &GopherReply::socket_connected);
-    connect(socket, static_cast<void(QAbstractSocket::*)(QAbstractSocket::SocketError)>(&QAbstractSocket::error), this, &GopherReply::socket_error);
-    connect(socket, &QAbstractSocket::disconnected, this, &GopherReply::socket_disconnected);
-    connect(socket, static_cast<void(QSslSocket::*)(const QList<QSslError>&)>(&QSslSocket::sslErrors), this, &GopherReply::socket_sslErrors);
+        connect(socket, &QSslSocket::connected, this, &CustomReply::socket_connected);
+    connect(socket, static_cast<void(QAbstractSocket::*)(QAbstractSocket::SocketError)>(&QAbstractSocket::error), this, &CustomReply::socket_error);
+    connect(socket, &QAbstractSocket::disconnected, this, &CustomReply::socket_disconnected);
+    connect(socket, static_cast<void(QSslSocket::*)(const QList<QSslError>&)>(&QSslSocket::sslErrors), this, &CustomReply::socket_sslErrors);
     /*
     connect(socket, &QSslSocket::modeChanged, this, &GopherReply::socket_modeChanged);
     connect(socket, &QAbstractSocket::stateChanged, this, &GopherReply::socket_stateChanged);
@@ -41,90 +43,100 @@ GopherReply::GopherReply(const QNetworkRequest &request, QObject *parent)
     */
 }
 
-GopherReply::~GopherReply()
+CustomReply::~CustomReply()
 {
 
 }
 
-bool GopherReply::open(QIODevice::OpenMode mode)
+bool CustomReply::open(QIODevice::OpenMode mode)
 {
-    QIODevice::open(mode);
+    if (!QIODevice::open(mode)) return false;
     if (gemini) {
         socket->setProtocol(QSsl::TlsV1_2OrLater);
         socket->setPeerVerifyMode(QSslSocket::PeerVerifyMode::QueryPeer);
-        socket->connectToHostEncrypted(request().url().host(), request().url().port(1965));
+        socket->connectToHostEncrypted(request().url().host(), static_cast<uint16_t>(request().url().port(1965)));
     } else {
-        socket->connectToHost(request().url().host(), request().url().port(70));
+        socket->connectToHost(request().url().host(), static_cast<uint16_t>(request().url().port(70)));
     }
     return true;
 }
 
-qint64 GopherReply::bytesAvailable() const
+qint64 CustomReply::bytesAvailable() const
 {
-    return buf.size() + QIODevice::bytesAvailable();
+    if (gemini_finished)
+        return 0;
+    else
+        return buf.size() + QIODevice::bytesAvailable();
 }
 
-void GopherReply::close()
+void CustomReply::close()
 {
     socket->close();
 }
 
-bool GopherReply::isSequential() const
+bool CustomReply::isSequential() const
 {
     return true;
 }
 
-void GopherReply::abort()
+void CustomReply::abort()
 {
     socket->close();
 }
 
-bool GopherReply::canReadLine() const
+bool CustomReply::canReadLine() const
 {
+    if (gemini_finished) return false;
+
     return QIODevice::canReadLine() || buf.contains('\n')
             || ((socket->state() == QAbstractSocket::UnconnectedState
                  || socket->state() == QAbstractSocket::ClosingState)
                 && bytesAvailable());
 }
 
-qint64 GopherReply::readData(char *data, qint64 maxSize)
+qint64 CustomReply::readData(char *data, qint64 maxSize)
 {
-    if (gemini && !gemini_response_header_received) return 0;
+    if ((gemini && !gemini_response_header_received) || gemini_finished) return 0;
 
-    qint64 n = std::min(maxSize, static_cast<qint64>(buf.size()));
-    memcpy(data, buf.data(), n);
+    int n = std::min(static_cast<int>(maxSize), buf.size());
+    memcpy(data, buf.data(), static_cast<size_t>(n));
     buf.remove(0, n);
     return n;
 }
 
-qint64 GopherReply::writeData(const char *, qint64)
+qint64 CustomReply::writeData(const char *, qint64)
 {
     return -1;
 }
 
-void GopherReply::socket_connected()
+void CustomReply::socket_connected()
 {
     QByteArray b;
     if (gemini) {
         // Send full URL
-        b = request().url().toString().toUtf8();
+        b = request().url().toEncoded();
     } else {
         b = request().url().path().mid(2).toLatin1(); // Send path only, skip first slash and type
+        if (request().url().hasQuery()) {
+            b.append('\t').append(request().url().query(QUrl::FullyDecoded).toLatin1());
+        }
     }
+
     qInfo("socket_connected, sending request: %s", b.data());
     b.append("\r\n");
     socket->write(b);
 }
 
-void GopherReply::fail(QNetworkReply::NetworkError err) {
+void CustomReply::fail(QNetworkReply::NetworkError err)
+{
+    gemini_finished = true;
     buf.clear();
     socket->close();
     error(err);
 }
 
-void GopherReply::socket_readyRead()
+void CustomReply::socket_readyRead()
 {
-    qInfo("socket_readyRead");
     QByteArray data = socket->readAll();
     buf.append(data);
     if (gemini && !gemini_response_header_received) {
@@ -132,20 +144,34 @@ void GopherReply::socket_readyRead()
         if (pos >= 1024 + 3) {
             // Response header too long
             fail(QNetworkReply::NetworkError::ProtocolFailure);
-        } else if (pos >= 3) {
-            if (QChar(buf.at(0)).isDigit() && QChar(buf.at(1)).isDigit() && (buf.at(2) == ' ' || buf.at(2) == '\t')) {
-                if (buf.at(2) == '\t') qInfo("Non compliant server: sent a tab instead of a space after the status code");
+        } else if (pos >= 2) {
+            if (QChar(buf.at(0)).isDigit() && QChar(buf.at(1)).isDigit() && (pos == 2 || buf.at(2) == ' ' || buf.at(2) == '\t')) {
+                if (pos == 2)
+                    qInfo("Non compliant server: sent a status-only header");
+                else
+                    if (buf.at(2) == '\t') qInfo("Non compliant server: sent a tab instead of a space after the status code");
+
                 char status_digit = buf.at(0);
+                QString meta = pos == 2 ? "" : QString::fromUtf8(buf.mid(3, pos - 3));
+                if (status_digit == '2' && meta.isEmpty()) meta = "text/gemini; charset=utf-8";
+
                 setRawHeader("x-gemini-status", buf.mid(0, 2));
-                setRawHeader("x-gemini-meta", buf.mid(3, pos - 3));
+                setRawHeader("x-gemini-meta", meta.toUtf8());
+
                 gemini_response_header_received = true;
                 buf.remove(0, pos + 2);
-                // TODO use redirected() signal for redirects
-                if (status_digit == '2') {
+                metaDataChanged();
+
+                if (status_digit == '1') {
+                    gemini_finished = true;
+                    socket->close();
+                } else if (status_digit == '2') {
                     downloadProgress(buf.size(), -1);
                     if (buf.size() != 0) readyRead();
                 } else if (status_digit == '3') {
                     redirected(QUrl(rawHeader("x-gemini-meta")));
+                    gemini_finished = true;
+                    socket->close();
                 } else if (status_digit == '4') {
                     fail(QNetworkReply::NetworkError::ServiceUnavailableError);
                 } else if (status_digit == '5') {
@@ -175,7 +201,7 @@ void GopherReply::socket_readyRead()
     }
 }
 
-void GopherReply::socket_error(QAbstractSocket::SocketError socketError)
+void CustomReply::socket_error(QAbstractSocket::SocketError socketError)
 {
     if (socketError == QAbstractSocket::SocketError::RemoteHostClosedError) {
         socket->close();
@@ -198,7 +224,7 @@ void GopherReply::socket_error(QAbstractSocket::SocketError socketError)
     }
 }
 
-void GopherReply::socket_disconnected()
+void CustomReply::socket_disconnected()
 {
     if (gemini && !gemini_response_header_received) {
         error(QNetworkReply::NetworkError::RemoteHostClosedError);
@@ -206,13 +232,14 @@ void GopherReply::socket_disconnected()
     finished();
 }
 
-void GopherReply::socket_sslErrors(const QList<QSslError> &errs)
+void CustomReply::socket_sslErrors(const QList<QSslError> &errs)
 {
     qInfo("SSL Errors:");
     for (auto &err : errs) {
         qInfo() << err.error() << ": " << err.errorString();
     }
 }
+
 /*
 void GopherReply::socket_modeChanged(QSslSocket::SslMode mode)
 {
