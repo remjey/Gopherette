@@ -1,5 +1,5 @@
 /* This file is part of Gopherette, the SailfishOS Gopher-space browser.
- * Copyright (C) 2018 - Jérémy Farnaud
+ * Copyright (C) 2020 - Jérémy Farnaud
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

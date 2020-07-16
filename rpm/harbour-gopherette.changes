@@ -8,7 +8,8 @@
 # * date Author's Name <author's email> version-release
 # - Summary of changes
 
-
+* Wed Jul 16 2020 Jérémy Farnaud <jf@almel.fr> 0.5-1
+- Added partial Gemini support
 
 * Wed Jul 31 2019 Jérémy Farnaud <jf@almel.fr> 0.4-1
 - Better default font sizes
