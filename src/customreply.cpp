@@ -26,6 +26,7 @@ CustomReply::CustomReply(const QNetworkRequest &request, QObject *parent)
       gemini(request.url().scheme() == "gemini"),
       gemini_response_header_received(false),
       gemini_finished(false),
+      gemini_accept_certificate(false),
       gcm(new GeminiCertificateManager(this))
 {
     setRequest(request);
@@ -55,8 +56,12 @@ bool CustomReply::open(QIODevice::OpenMode mode)
 {
     if (!QIODevice::open(mode)) return false;
     if (gemini) {
-        socket->setProtocol(QSsl::TlsV1_2OrLater);
-        socket->setPeerVerifyMode(QSslSocket::PeerVerifyMode::QueryPeer);
+        QSslConfiguration sslConf;
+        sslConf.setProtocol(QSsl::TlsV1_2OrLater);
+        sslConf.setCaCertificates({});
+        sslConf.setPeerVerifyMode(QSslSocket::PeerVerifyMode::QueryPeer);
+        sslConf.setPeerVerifyDepth(1);
+        socket->setSslConfiguration(sslConf);
         socket->connectToHostEncrypted(request().url().host(), static_cast<uint16_t>(request().url().port(1965)));
     } else {
         socket->connectToHost(request().url().host(), static_cast<uint16_t>(request().url().port(70)));
@@ -79,8 +84,12 @@ void CustomReply::close()
 
 void CustomReply::acceptCertificate()
 {
-    gcm->update_server(request().url().host(), request().url().port(1965), socket->peerCertificate());
-    send_request();
+    if (socket_cert.isNull()) {
+        gemini_accept_certificate = true;
+    } else {
+        gcm->update_server(request().url().host(), request().url().port(1965), socket_cert);
+        send_request();
+    }
 }
 
 bool CustomReply::isSequential() const
@@ -123,12 +132,17 @@ void CustomReply::socket_connected()
 {
     qInfo("Socket connected");
     if (gemini) {
-        QSslCertificate peer_cert = socket->peerCertificate();
+        socket_cert = socket->peerCertificate();
         QString fp, hostname;
         hostname = request().url().host();
-        auto cert_result = gcm->check_server(request().url().host(), request().url().port(1965), peer_cert, &fp);
+        auto cert_result = gcm->check_server(request().url().host(), request().url().port(1965), socket_cert, &fp);
         if (cert_result != GeminiCertificateManager::ServerCertificateOK) {
-            auto cn_list = peer_cert.subjectInfo(QSslCertificate::CommonName);
+            if (gemini_accept_certificate) {
+                acceptCertificate();
+                return;
+            }
+
+            auto cn_list = socket_cert.subjectInfo(QSslCertificate::CommonName);
             bool cn_ok = cn_list.contains(hostname);
 
             if (cert_result == GeminiCertificateManager::ServerCertificateUnknown) {

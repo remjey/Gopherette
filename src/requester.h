@@ -125,6 +125,7 @@ private:
 
     CustomReply *reply;
 
+    void reopen(bool accept_certificate);
     void fillGeminiRelative(QUrl &url_arg);
 
     void readMenu();

@@ -53,10 +53,13 @@ protected:
 
     bool request_sent;
     QSslSocket *socket;
+    QSslCertificate socket_cert;
     QByteArray buf;
     bool gemini;
     bool gemini_response_header_received;
     bool gemini_finished;
+
+    bool gemini_accept_certificate;
 
 protected slots:
     void socket_connected();

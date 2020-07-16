@@ -245,6 +245,12 @@ void Requester::onGeminiCertificateChanged(QString fp, bool cn_ok, QString cns)
     r_gemini_certificate_changed(fp, cn_ok, cns);
 }
 
+void Requester::reopen(bool accept_certificate)
+{
+    open(url, EncAuto);
+    if (accept_certificate) reply->acceptCertificate();
+}
+
 void Requester::fillGeminiRelative(QUrl &url_arg)
 {
     if (url_arg.scheme().isEmpty()) {
@@ -421,13 +427,17 @@ Requester::Encoding Requester::responseEncoding() {
 void Requester::acceptCertificate()
 {
     qInfo("Certificate accepted");
-    reply->acceptCertificate();
+    if (reply) {
+        reply->acceptCertificate();
+    } else {
+        reopen(true);
+    }
 }
 
 void Requester::abort()
 {
     qInfo("Certificate refused");
-    reply->abort();
+    if (reply) reply->abort();
 }
 
 QString Requester::readLine() {
