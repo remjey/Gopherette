@@ -145,6 +145,8 @@ void Requester::open(QUrl url_arg, Encoding enc)
     connect(reply, &CustomReply::geminiCertificateUnknown, this, &Requester::onGeminiCertificateUnknown);
     connect(reply, &CustomReply::geminiCertificateChanged, this, &Requester::onGeminiCertificateChanged);
 
+    if (enc == EncUTF8) reply->setGopherQueryUTF8(true);
+
     r_start(url.scheme());
     qInfo() << "Gopher/Gemini request: " << url;
 }

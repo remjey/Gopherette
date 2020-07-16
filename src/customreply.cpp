@@ -19,6 +19,7 @@
 
 #include <QMetaEnum>
 #include <QSslKey>
+#include <QSslCipher>
 
 CustomReply::CustomReply(const QNetworkRequest &request, QObject *parent)
     : QNetworkReply(parent),
@@ -82,6 +83,11 @@ void CustomReply::close()
     socket->close();
 }
 
+void CustomReply::setGopherQueryUTF8(bool value)
+{
+    gopher_query_utf8 = value;
+}
+
 void CustomReply::acceptCertificate()
 {
     if (socket_cert.isNull()) {
@@ -133,6 +139,7 @@ void CustomReply::socket_connected()
     qInfo("Socket connected");
     if (gemini) {
         socket_cert = socket->peerCertificate();
+        qInfo() << "Cipher: " << socket->sessionCipher().name();
         QString fp, hostname;
         hostname = request().url().host();
         auto cert_result = gcm->check_server(request().url().host(), request().url().port(1965), socket_cert, &fp);
@@ -283,7 +290,9 @@ void CustomReply::send_request()
     } else {
         b = request().url().path().mid(2).toLatin1(); // Send path only, skip first slash and type
         if (request().url().hasQuery()) {
-            b.append('\t').append(request().url().query(QUrl::FullyDecoded).toLatin1());
+            QString q = request().url().query(QUrl::FullyDecoded);
+            QByteArray qb = gopher_query_utf8 ? q.toUtf8() : q.toLatin1();
+            b.append('\t').append(qb);
         }
     }
 

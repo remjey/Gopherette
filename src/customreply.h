@@ -35,6 +35,7 @@ public:
     qint64 bytesAvailable() const override;
     void close() override;
 
+    void setGopherQueryUTF8(bool);
     void acceptCertificate();
 
     bool isSequential() const override;
@@ -55,6 +56,7 @@ protected:
     QSslSocket *socket;
     QSslCertificate socket_cert;
     QByteArray buf;
+    bool gopher_query_utf8;
     bool gemini;
     bool gemini_response_header_received;
     bool gemini_finished;
