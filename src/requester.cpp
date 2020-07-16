@@ -133,7 +133,7 @@ void Requester::open(QUrl url_arg, Encoding enc)
     gemini_title_sent = false;
     gemini_pre_toggle = false;
     redirection.clear();
-    reply = nam->get(QNetworkRequest(url));
+    reply = dynamic_cast<CustomReply*>(nam->get(QNetworkRequest(url)));
 
     connect(reply, &QIODevice::readyRead, this, &Requester::readyRead);
     connect(reply, &QNetworkReply::finished, this, &Requester::disconnected);
@@ -141,6 +141,9 @@ void Requester::open(QUrl url_arg, Encoding enc)
             this, &Requester::error);
     connect(reply, &QNetworkReply::metaDataChanged, this, &Requester::metaDataChanged);
     connect(reply, &QNetworkReply::redirected, this, &Requester::redirected);
+
+    connect(reply, &CustomReply::geminiCertificateUnknown, this, &Requester::onGeminiCertificateUnknown);
+    connect(reply, &CustomReply::geminiCertificateChanged, this, &Requester::onGeminiCertificateChanged);
 
     r_start(url.scheme());
     qInfo() << "Gopher/Gemini request: " << url;
@@ -230,6 +233,16 @@ void Requester::redirected(const QUrl &r)
 {
     redirection = r;
     fillGeminiRelative(redirection);
+}
+
+void Requester::onGeminiCertificateUnknown(QString fp, bool cn_ok, QString cns)
+{
+    r_gemini_certificate_unknown(fp, cn_ok, cns);
+}
+
+void Requester::onGeminiCertificateChanged(QString fp, bool cn_ok, QString cns)
+{
+    r_gemini_certificate_changed(fp, cn_ok, cns);
 }
 
 void Requester::fillGeminiRelative(QUrl &url_arg)
@@ -403,6 +416,18 @@ void Requester::readMenu() {
 
 Requester::Encoding Requester::responseEncoding() {
     return enc;
+}
+
+void Requester::acceptCertificate()
+{
+    qInfo("Certificate accepted");
+    reply->acceptCertificate();
+}
+
+void Requester::abort()
+{
+    qInfo("Certificate refused");
+    reply->abort();
 }
 
 QString Requester::readLine() {

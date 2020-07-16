@@ -18,12 +18,15 @@
 #include "customreply.h"
 
 #include <QMetaEnum>
+#include <QSslKey>
 
 CustomReply::CustomReply(const QNetworkRequest &request, QObject *parent)
     : QNetworkReply(parent),
+      request_sent(false),
       gemini(request.url().scheme() == "gemini"),
       gemini_response_header_received(false),
-      gemini_finished(false)
+      gemini_finished(false),
+      gcm(new GeminiCertificateManager(this))
 {
     setRequest(request);
     socket = new QSslSocket(this);
@@ -74,6 +77,12 @@ void CustomReply::close()
     socket->close();
 }
 
+void CustomReply::acceptCertificate()
+{
+    gcm->update_server(request().url().host(), request().url().port(1965), socket->peerCertificate());
+    send_request();
+}
+
 bool CustomReply::isSequential() const
 {
     return true;
@@ -81,6 +90,7 @@ bool CustomReply::isSequential() const
 
 void CustomReply::abort()
 {
+    error(QNetworkReply::NetworkError::OperationCanceledError);
     socket->close();
 }
 
@@ -111,20 +121,27 @@ qint64 CustomReply::writeData(const char *, qint64)
 
 void CustomReply::socket_connected()
 {
-    QByteArray b;
+    qInfo("Socket connected");
     if (gemini) {
-        // Send full URL
-        b = request().url().toEncoded();
-    } else {
-        b = request().url().path().mid(2).toLatin1(); // Send path only, skip first slash and type
-        if (request().url().hasQuery()) {
-            b.append('\t').append(request().url().query(QUrl::FullyDecoded).toLatin1());
+        QSslCertificate peer_cert = socket->peerCertificate();
+        QString fp, hostname;
+        hostname = request().url().host();
+        auto cert_result = gcm->check_server(request().url().host(), request().url().port(1965), peer_cert, &fp);
+        if (cert_result != GeminiCertificateManager::ServerCertificateOK) {
+            auto cn_list = peer_cert.subjectInfo(QSslCertificate::CommonName);
+            bool cn_ok = cn_list.contains(hostname);
+
+            if (cert_result == GeminiCertificateManager::ServerCertificateUnknown) {
+                geminiCertificateUnknown(fp, cn_ok, cn_list.join(", "));
+                return;
+            } else if (cert_result == GeminiCertificateManager::ServerCertificateChanged) {
+                geminiCertificateChanged(fp, cn_ok, cn_list.join(", "));
+                return;
+            }
         }
     }
 
-    qInfo("socket_connected, sending request: %s", b.data());
-    b.append("\r\n");
-    socket->write(b);
+    send_request();
 }
 
 void CustomReply::fail(QNetworkReply::NetworkError err)
@@ -238,6 +255,27 @@ void CustomReply::socket_sslErrors(const QList<QSslError> &errs)
     for (auto &err : errs) {
         qInfo() << err.error() << ": " << err.errorString();
     }
+}
+
+void CustomReply::send_request()
+{
+    if (request_sent) return;
+    request_sent = true;
+
+    QByteArray b;
+    if (gemini) {
+        // Send full URL
+        b = request().url().toEncoded();
+    } else {
+        b = request().url().path().mid(2).toLatin1(); // Send path only, skip first slash and type
+        if (request().url().hasQuery()) {
+            b.append('\t').append(request().url().query(QUrl::FullyDecoded).toLatin1());
+        }
+    }
+
+    qInfo("Sending request: %s", b.data());
+    b.append("\r\n");
+    socket->write(b);
 }
 
 /*

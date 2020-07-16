@@ -15,9 +15,11 @@ TARGET = harbour-gopherette
 CONFIG += sailfishapp
 
 SOURCES += src/harbour-gopherette.cpp \
+    src/customnetworkaccessmanagerfactory.cpp \
     src/customreply.cpp \
     src/customnetworkaccessmanager.cpp \
     src/geminicachedrequestdata.cpp \
+    src/geminicertificatemanager.cpp \
     src/requester.cpp
 
 OTHER_FILES += qml/harbour-gopherette.qml \
@@ -40,8 +42,10 @@ CONFIG += sailfishapp_i18n
 TRANSLATIONS += translations/harbour-gopherette-de.ts
 
 HEADERS += \
+    src/customnetworkaccessmanagerfactory.h \
     src/customreply.h \
     src/geminicachedrequestdata.h \
+    src/geminicertificatemanager.h \
     src/harbour-gopherette.h \
     src/customnetworkaccessmanager.h \
     src/requester.h
@@ -51,6 +55,7 @@ DISTFILES += \
     qml/pages/Browser.qml \
     qml/pages/Bookmarks.qml \
     qml/pages/Bookmark.qml \
+    qml/pages/CertificateNotify.qml \
     qml/pages/Details.qml \
     qml/Model.qml \
     qml/qmldir \

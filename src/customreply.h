@@ -18,12 +18,15 @@
 #ifndef GOPHERREPLY_H
 #define GOPHERREPLY_H
 
+#include "geminicertificatemanager.h"
+
 #include <QNetworkReply>
 #include <QObject>
 #include <QSslSocket>
 
 class CustomReply : public QNetworkReply
 {
+Q_OBJECT
 public:
     CustomReply(const QNetworkRequest &request, QObject *parent);
     ~CustomReply() override;
@@ -32,16 +35,23 @@ public:
     qint64 bytesAvailable() const override;
     void close() override;
 
+    void acceptCertificate();
+
     bool isSequential() const override;
     bool canReadLine() const override;
 
 public slots:
     void abort() override;
 
+signals:
+    void geminiCertificateUnknown(QString fp, bool cn_ok, QString cns);
+    void geminiCertificateChanged(QString fp, bool cn_ok, QString cns);
+
 protected:
     qint64 readData(char *data, qint64 maxSize) override;
     qint64 writeData(const char *data, qint64 len) override;
 
+    bool request_sent;
     QSslSocket *socket;
     QByteArray buf;
     bool gemini;
@@ -62,6 +72,8 @@ protected slots:
     */
 
 private:
+    GeminiCertificateManager *gcm;
+    void send_request();
     void fail(QNetworkReply::NetworkError err);
 };
 

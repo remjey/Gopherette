@@ -18,6 +18,8 @@
 #ifndef GOPHERREQUEST_H
 #define GOPHERREQUEST_H
 
+#include "customreply.h"
+
 #include <QObject>
 #include <QNetworkReply>
 
@@ -72,6 +74,12 @@ public:
     Q_INVOKABLE
     Encoding responseEncoding();
 
+    Q_INVOKABLE
+    void acceptCertificate();
+
+    Q_INVOKABLE
+    void abort();
+
 signals:
     void r_start(QString protocol);
     void r_text(QString line);
@@ -87,6 +95,9 @@ signals:
     void r_gemini_list(QString text);
     void r_gemini_data_link(QUrl url, QString content_type);
 
+    void r_gemini_certificate_unknown(QString fp, bool cn_ok, QString cns);
+    void r_gemini_certificate_changed(QString fp, bool cn_ok, QString cns);
+
 public slots:
 
 protected slots:
@@ -95,6 +106,9 @@ protected slots:
     void disconnected();
     void metaDataChanged();
     void redirected(const QUrl &url);
+
+    void onGeminiCertificateUnknown(QString fp, bool cn_ok, QString cns);
+    void onGeminiCertificateChanged(QString fp, bool cn_ok, QString cns);
 
 private:
     QString type;
@@ -109,7 +123,7 @@ private:
     bool gemini_title_sent;
     bool gemini_pre_toggle;
 
-    QNetworkReply *reply;
+    CustomReply *reply;
 
     void fillGeminiRelative(QUrl &url_arg);
 
@@ -117,7 +131,6 @@ private:
     void readText();
     void readGemini();
     void readGeminiNonText();
-    void close();
     QString readLine();
 };
 

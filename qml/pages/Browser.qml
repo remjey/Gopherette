@@ -291,6 +291,42 @@ Page {
                 contentImage.load(url);
             }
         }
+
+        property var certificate_notify_data: null;
+
+        function tryCertificateNotify() {
+            if (certificate_notify_data && !pageStack.busy) {
+                pageStack.push("CertificateNotify.qml", certificate_notify_data);
+                certificate_notify_data = null;
+                console.log("Render trigger stopped by certificate notif");
+            }
+        }
+
+        onR_gemini_certificate_unknown: {
+            certificate_notify_data = {
+                server: host,
+                port: port,
+                fp: fp,
+                first: true,
+                cn_ok: cn_ok,
+                cns: cns,
+                requester: requester,
+            };
+            tryCertificateNotify();
+        }
+
+        onR_gemini_certificate_changed: {
+            certificate_notify_data = {
+                server: host,
+                port: port,
+                fp: fp,
+                first: true,
+                cn_ok: cn_ok,
+                cns: cns,
+                requester: requester,
+            };
+            tryCertificateNotify();
+        }
     }
 
     Component.onCompleted: {
@@ -331,7 +367,10 @@ Page {
                     if (unloaded) {
                         load();
                     } else {
+                        requester.tryCertificateNotify();
+                        if (bufUpdateTimer.running) bufUpdateTimer.stop();
                         bufUpdateTimer.start();
+                        console.log("Render timer start");
                     }
                 }
             } else {
@@ -358,6 +397,7 @@ Page {
         running: false
         triggeredOnStart: true
         onTriggered: {
+            console.log("Render timer trigger");
             parserWorker.sendMessage({ action: "render" });
             if (requestEnded) bufUpdateTimer.stop();
         }
