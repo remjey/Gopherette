@@ -215,10 +215,13 @@ void Requester::metaDataChanged()
 
             if (property == "charset") {
                 value = value.toLower();
-                if (value == "utf8" || value == "utf-8")
+                if (value == "utf8" || value == "utf-8") {
                     gemini_charset = "utf-8";
-                else
+                    enc = EncUTF8;
+                } else {
                     gemini_charset = "latin1";
+                    enc = EncLatin1;
+                }
             }
         }
     }

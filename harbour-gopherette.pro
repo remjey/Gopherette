@@ -52,6 +52,7 @@ HEADERS += \
 
 DISTFILES += \
     qml/components/ImageDisplay.qml \
+    qml/components/PageStackEvents.qml \
     qml/pages/Browser.qml \
     qml/pages/Bookmarks.qml \
     qml/pages/Bookmark.qml \

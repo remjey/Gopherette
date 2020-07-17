@@ -359,33 +359,30 @@ Page {
         updateContentAspect();
     }
 
-    Connections {
-        target: pageStack
-        onBusyChanged: {
-            if (!pageStack.busy) {
-                if (pageStack.currentPage === page) {
-                    if (unloaded) {
-                        load();
-                    } else {
-                        requester.tryCertificateNotify();
-                        if (bufUpdateTimer.running) bufUpdateTimer.stop();
-                        bufUpdateTimer.start();
-                        console.log("Render timer start");
-                    }
-                }
-            } else {
-                console.log("I’m page", historyIndex, ", unloaded(", unloaded, "), I see depth ", pageStack.depth)
-                if (unloaded && historyIndex == pageStack.depth - 3) {
+    PageStackEvents {
+        onChanged: {
+            if (toMe) {
+                if (unloaded) {
                     load();
-                } else if (!unloaded && historyIndex === pageStack.depth - 12) {
-                    // TODO using pageStack.depth isn’t optimal
-                    unloaded = true;
-                    content.text = "";
-                    cutebuf = "";
-                    rawbuf = "";
-                    contentImage.unload();
-                    console.log("Unloading", historyIndex)
+                } else {
+                    requester.tryCertificateNotify();
+                    if (bufUpdateTimer.running) bufUpdateTimer.stop();
+                    bufUpdateTimer.start();
+                    console.log("Render timer start");
                 }
+            }
+        }
+
+        onChanging: {
+            if (unloaded && toMe) {
+                load();
+            } else if (!unloaded && myDepth === pageStack.depth - 8) {
+                unloaded = true;
+                content.text = "";
+                cutebuf = "";
+                rawbuf = "";
+                contentImage.unload();
+                console.log("Unloading", historyIndex)
             }
         }
     }
