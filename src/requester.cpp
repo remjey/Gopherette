@@ -117,8 +117,6 @@ void Requester::open(QUrl url_arg, Encoding enc)
 
     this->url = url_arg;
     if (url.scheme() == "gemini") {
-        // NormalizePathSegments removes useless stuff from the URL
-        this->url = url_arg.toString(QUrl::PrettyDecoded | QUrl::NormalizePathSegments);
         this->enc = EncUTF8;
         this->type = "gemini";
     } else {
@@ -237,8 +235,7 @@ void Requester::metaDataChanged()
 
 void Requester::redirected(const QUrl &r)
 {
-    redirection = r;
-    fillGeminiRelative(redirection);
+    redirection = url.resolved(r);
 }
 
 void Requester::onGeminiCertificateUnknown(QString fp, bool cn_ok, QString cns)
@@ -255,25 +252,6 @@ void Requester::reopen(bool accept_certificate)
 {
     open(url, EncAuto);
     if (accept_certificate) reply->acceptCertificate();
-}
-
-void Requester::fillGeminiRelative(QUrl &url_arg)
-{
-    if (url_arg.scheme().isEmpty()) {
-        if (!url_arg.path().isEmpty() && !url_arg.path().startsWith("/")) {
-            int last_slash = url.path().lastIndexOf('/');
-            if (last_slash != -1) {
-                url_arg.setPath(url.path().mid(0, last_slash + 1) + url_arg.path());
-            }
-        }
-
-        url_arg.setScheme("gemini");
-    }
-
-    if (url_arg.host().isEmpty()) {
-        url_arg.setHost(url.host());
-        if (url_arg.port() == -1) url_arg.setPort(url.port());
-    }
 }
 
 void Requester::disconnected()
@@ -372,7 +350,7 @@ void Requester::readGemini()
             else
                 text = link_url.toString();
 
-            fillGeminiRelative(link_url);
+            link_url = url.resolved(link_url);
 
             if (link_url.scheme() == "gemini") {
                 r_link("gemini", text, link_url.host(), static_cast<uint16_t>(link_url.port(1965)), link_url.path(), link_url.query(QUrl::FullyDecoded));
