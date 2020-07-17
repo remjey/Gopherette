@@ -198,6 +198,7 @@ void Requester::metaDataChanged()
             gemini_parse_level = GeminiNonText;
             if (!gemini_content_type.startsWith("image/")) {
                 r_error("Unsupported file-type: " + gemini_content_type);
+                r_text("This error message was generated on the client side.");
                 reply->abort();
             }
         }
@@ -279,16 +280,31 @@ void Requester::disconnected()
 {
     qInfo() << "Disconnected, bytes remaining " << (reply ? reply->bytesAvailable() : 0);
     readyRead();
+    if (!redirection.isEmpty() && redirection_counter == 5) {
+        r_error("Too many redirections.");
+        r_error("Last aborted redirection: " + redirection.toString());
+        r_text("This error message was generated on the client side.");
+    }
     r_end();
     reply->deleteLater();
     reply = nullptr;
+
     qInfo() << "Request ended, encoding: " << QMetaEnum::fromType<Encoding>().key(enc);
     if (!redirection.isEmpty()) {
-        qInfo() << "Redirected to: " << redirection;
-        open(redirection, enc);
-    } else if (gemini_parse_level == GeminiNonText) {
-        quint64 id = GeminiCachedRequestData::steal(gemini_nontext_buffer);
-        r_gemini_data_link("geminicache:///" + QString::number(id), gemini_content_type);
+        if (redirection_counter == 5) {
+            qInfo() << "Too many redirections.";
+            redirection_counter = 0;
+        } else {
+            qInfo() << "Redirected to: " << redirection;
+            redirection_counter++;
+            open(redirection, enc);
+        }
+    } else {
+        redirection_counter = 0;
+        if (gemini_parse_level == GeminiNonText) {
+            quint64 id = GeminiCachedRequestData::steal(gemini_nontext_buffer);
+            r_gemini_data_link("geminicache:///" + QString::number(id), gemini_content_type);
+        }
     }
 }
 

@@ -114,6 +114,7 @@ private:
     QString type;
     Encoding enc;
     QUrl url, redirection;
+    int redirection_counter = 0;
 
     QString gemini_content_type;
     QString gemini_charset;
