@@ -80,6 +80,9 @@ public:
     Q_INVOKABLE
     void abort();
 
+    Q_INVOKABLE
+    void setMediaSource(QObject *audio, QUrl url);
+
 signals:
     void r_start(QString protocol);
     void r_text(QString line);

@@ -36,6 +36,7 @@ QNetworkReply *CustomNetworkAccessManager::createRequest(QNetworkAccessManager::
         return r;
 
     } else if (request.url().scheme() == "geminicache") {
+        qInfo() << "Geminicache URL: " << request.url();
         if (op != QNetworkAccessManager::Operation::GetOperation) return nullptr;
         GeminiCachedRequestData *r = new GeminiCachedRequestData(request, this);
         r->open(QIODevice::ReadOnly);

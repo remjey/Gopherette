@@ -179,12 +179,12 @@ Page {
             Item {
                 width: 1;
                 height: Theme.paddingLarge
-                visible: !contentImage.loaded
+                visible: !contentMediaLoader.status === Loader.Ready
             }
 
-            ImageDisplay {
-                id: contentImage
-                visible: false
+            Loader {
+                id: contentMediaLoader
+                width: parent.width
             }
 
             BusyIndicator {
@@ -287,8 +287,13 @@ Page {
             if (content_type.substring(0, 6) == "image/") {
                 content.visible = false;
                 busyIndicator.visible = false;
-                contentImage.visible = true;
-                contentImage.load(url);
+                contentMediaLoader.source = "../components/ImageDisplay.qml"
+                contentMediaLoader.item.load(url);
+            } else if (content_type.substring(0, 6) == "audio/") {
+                content.visible = false;
+                busyIndicator.visible = false;
+                contentMediaLoader.source = "../components/AudioPlayer.qml"
+                requester.setMediaSource(contentMediaLoader.item.audio, url);
             }
         }
 

@@ -84,6 +84,7 @@ Page {
                         case 'T': return 'Telnet 3270';
                         case 'h': return _webURL ? 'URL' : 'HTML file';
                         case 's': return 'Sound file';
+                        case 'gemini': return 'Gemini document';
                         default: return 'Unknown type: ' + type;
                         }
                     }

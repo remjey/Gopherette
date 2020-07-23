@@ -24,6 +24,7 @@
 #include <QMetaEnum>
 #include <QRegExp>
 #include <QRegularExpression>
+#include <QMediaPlayer>
 
 Requester::Encoding encodingOf(const QByteArray& ba)
 {
@@ -194,7 +195,7 @@ void Requester::metaDataChanged()
             }
         } else {
             gemini_parse_level = GeminiNonText;
-            if (!gemini_content_type.startsWith("image/")) {
+            if (!gemini_content_type.startsWith("image/") && !gemini_content_type.startsWith("audio/")) {
                 r_error("Unsupported file-type: " + gemini_content_type);
                 r_text("This error message was generated on the client side.");
                 reply->abort();
@@ -437,6 +438,12 @@ void Requester::abort()
 {
     qInfo("Certificate refused");
     if (reply) reply->abort();
+}
+
+void Requester::setMediaSource(QObject *audio, QUrl url)
+{
+    QMediaPlayer *player = qvariant_cast<QMediaPlayer*>(audio->property("mediaObject"));
+    player->setMedia({}, nam->get(QNetworkRequest(url)));
 }
 
 QString Requester::readLine() {

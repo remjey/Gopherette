@@ -14,6 +14,8 @@ TARGET = harbour-gopherette
 
 CONFIG += sailfishapp
 
+QT += multimedia
+
 SOURCES += src/harbour-gopherette.cpp \
     src/customnetworkaccessmanagerfactory.cpp \
     src/customreply.cpp \
@@ -51,6 +53,7 @@ HEADERS += \
     src/requester.h
 
 DISTFILES += \
+    qml/components/AudioPlayer.qml \
     qml/components/ImageDisplay.qml \
     qml/components/PageStackEvents.qml \
     qml/pages/Browser.qml \

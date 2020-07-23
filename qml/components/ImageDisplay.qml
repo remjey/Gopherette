@@ -23,6 +23,7 @@ MouseArea {
     height: Math.max(imageBusy.height, pic.height)
 
     function load(url) {
+        console.log(url)
         imageBusy.running = true;
         pic.source = url;
         loaded = false;
